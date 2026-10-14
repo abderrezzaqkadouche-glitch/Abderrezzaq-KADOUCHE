@@ -1,4 +1,3 @@
-# biostatistician-portfolio
 # 📊 Biostatistician Portfolio
 ### Applied statistical methods in R for clinical research
 
