@@ -7,7 +7,7 @@ Welcome to my portfolio! This repository showcases my work in clinical data anal
 
 ## 🔬 Projects & Reports
 
-### 1.[Survival Analysis](Lung.html)
+### 1.[Survival Analysis](lung.html)
 * **Project:** Lung Cancer Cohort
 * **Methodologies:** Kaplan-Meier curves, Log-Rank tests, Cox Proportional Hazards models.
 
