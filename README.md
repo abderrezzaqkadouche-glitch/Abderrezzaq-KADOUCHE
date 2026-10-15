@@ -21,7 +21,7 @@ Welcome to my portfolio! This repository showcases my work in clinical data anal
 **Statistical Methods Used:**
 * Multiple Linear Regression.
 * Chi-Square Test.
-* Student's t-test.
+* Student test.
 * ANOVA (Analysis of Variance).
 
 
