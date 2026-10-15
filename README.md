@@ -7,9 +7,21 @@ Welcome to my portfolio! This repository showcases my work in clinical data anal
 
 ## 🔬 Projects & Reports
 
-### 1.[Survival Analysis](lung.html)
-* **Project:** Lung Cancer Cohort
-* **Methodologies:** Kaplan-Meier curves, Log-Rank tests, Cox Proportional Hazards models.
+### 1.[NCCTG Lung Cancer Data: A Survival Analysis](lung.html)
 
+**Statistical Methods Used:** 
+* Kaplan-Meier curves.
+* Log-Rank test.
+* Cox Proportional Hazards model.
+* Multiple Imputation for missing data.
+
+
+### 2.[Determinants of Plasma Retinol Concentrations: A Cross-Sectional Study](retinol.html)
+
+**Statistical Methods Used:**
+* Multiple Linear Regression.
+* Chi-Square Test.
+* Student's t-test.
+* ANOVA (Analysis of Variance).
 
 
