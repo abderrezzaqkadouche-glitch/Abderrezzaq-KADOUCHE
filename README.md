@@ -1,5 +1,5 @@
-# 🩺Medical Doctor & Biostatistician Methodologist📊 
-### Applied statistical methods in R for clinical research
+<img width="1536" height="1024" alt="Designer" src="https://github.com/user-attachments/assets/a0f2288e-292e-4e29-af7e-f89230f27e83" />
+
 
 Welcome to my portfolio! This repository showcases my work in clinical trials & RWE data analysis, and statistical modeling using R.
 ---
