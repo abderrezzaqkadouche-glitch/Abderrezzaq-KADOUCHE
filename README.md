@@ -1,8 +1,7 @@
 # 🩺Medical Doctor & Biostatistician Methodologist📊 
 ### Applied statistical methods in R for clinical research
 
-Welcome to my portfolio! This repository showcases my work in clinical data analysis, and statistical modeling using R. 
-
+Welcome to my portfolio! This repository showcases my work in clinical trials & RWE data analysis, and statistical modeling using R.
 ---
 
 ## 🔬 Projects & Reports
