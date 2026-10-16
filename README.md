@@ -1,4 +1,4 @@
-<img width="1536" height="1024" alt="Designer" src="https://github.com/user-attachments/assets/a0f2288e-292e-4e29-af7e-f89230f27e83" />
+<img width="1152" height="768" alt="Designer (1)" src="https://github.com/user-attachments/assets/e52c2b97-88a0-4cdd-9e0a-6da13c815c03" />
 
 
 Welcome to my portfolio! This repository showcases my work in clinical trials & RWE data analysis, and statistical modeling using R.
