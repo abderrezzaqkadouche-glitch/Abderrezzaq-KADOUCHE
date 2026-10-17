@@ -13,8 +13,12 @@ Welcome to my portfolio! This repository showcases my work in clinical trials & 
 * Log-Rank test.
 * Cox Proportional Hazards model.
 
+### 2.[Longitudinal Evaluation of FEV1 Changes and Treatment Efficacy in Patients with Chronic Obstructive Pulmonary Disease](fev1-copd.html)
 
-### 2.[Determinants of Plasma Retinol Concentrations: A Cross-Sectional Study](retinol.html)
+**Statistical Methods Used:**
+* Mixed Model for Repeated Measures (MMRM).
+  
+### 3.[Determinants of Plasma Retinol Concentrations: A Cross-Sectional Study](retinol.html)
 
 **Statistical Methods Used:**
 * Multiple Linear Regression.
@@ -23,7 +27,7 @@ Welcome to my portfolio! This repository showcases my work in clinical trials & 
 * ANOVA (Analysis of Variance).
 
 
-### 3.[NCCTG Lung Cancer Data: A Survival Analysis](lung.html)
+### 4.[NCCTG Lung Cancer Data: A Survival Analysis](lung.html)
 
 **Statistical Methods Used:** 
 * Kaplan-Meier curves.
