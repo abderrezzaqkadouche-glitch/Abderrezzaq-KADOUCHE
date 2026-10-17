@@ -1,10 +1,10 @@
-<img width="768" height="512" alt="Designer (2)" src="https://github.com/user-attachments/assets/3ae59c27-2ad9-47df-a65d-3eae00525af3" />
+<img src="https://github.com/user-attachments/assets/3ae59c27-2ad9-47df-a65d-3eae00525af3" alt="Abderrezzaq Kadouche - MD & Biostatistician" style="max-width: 100%; height: auto; display: block; margin: 0 auto;" />
 
 
-Welcome to my portfolio! This repository showcases my work in clinical trials & RWE data analysis, and statistical modeling using R.
+Welcome to my portfolio! This repository showcases my work in clinical trials, RWE data analysis, and statistical modeling using R.
 ---
 
-## 🔬 Projects & Reports
+## 🔬 Case Studies
 
 ### 1.[Efficacy of Adjuvant Chemotherapy (5-FU + Levamisole) in Stage II/III Colon Cancer](colon-cancer-phase3-randomized-trial.html)
 
@@ -27,7 +27,7 @@ Welcome to my portfolio! This repository showcases my work in clinical trials & 
 * ANOVA (Analysis of Variance).
 
 
-### 4.[NCCTG Lung Cancer Data: A Survival Analysis](lung.html)
+### 4.[Lung Cancer Cohort: A Survival Analysis](lung.html)
 
 **Statistical Methods Used:** 
 * Kaplan-Meier curves.
