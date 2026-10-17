@@ -5,7 +5,18 @@ Welcome!
 
 This portfolio showcases my work in clinical trials, RWE data analysis, and statistical modeling using R.
 
-<p style="margin-top: 20px;">📥 <strong><a href="https://githubusercontent.com" target="_blank" style="color: #0066cc; text-decoration: underline;">Download my Curriculum Vitae (PDF)</a></strong></p>
+
+
+      
+<p style="margin-top: 20px;">
+  <strong>
+    <a href="./CV%20Abderrezzaq%20KADOUCHE_Biostatisticien_M%C3%A9thodologiste.pdf"
+       download="CV_Abderrezzaq_KADOUCHE_Biostatisticien_Methodologiste.pdf"
+       style="color: #0066cc; text-decoration: underline;">
+      📥Download my Curriculum Vitae (PDF)
+    </a>
+  </strong>
+</p>
 
 ---
 
