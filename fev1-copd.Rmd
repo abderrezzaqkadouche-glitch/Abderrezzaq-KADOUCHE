@@ -1,0 +1,327 @@
+---
+title: "Longitudinal Evaluation of FEV1 Changes and Treatment Efficacy in Patients with Chronic Obstructive Pulmonary Disease"
+
+subtitle: "A Mixed Model for Repeated Measures Approach"
+
+author: "Abderrezzaq KADOUCHE" 
+
+output:  
+ html_document:     
+  code_folding: hide 
+---
+
+------------------------------------------------------------------------
+
+```{r, include=FALSE}
+library(mmrm)
+data(fev_data)
+help(fev_data)
+```
+
+## **Introduction**
+
+Chronic Obstructive Pulmonary Disease (COPD) is a progressive, life-threatening lung condition characterized by chronic airflow limitation and persistent respiratory symptoms.
+
+In clinical development, the primary endpoint for evaluating the efficacy of new therapeutic agents is the Forced Expiratory Volume in 1 second (FEV1), expressed as a percentage of the predicted normal value.
+
+FEV1 measures how quickly the lungs can be emptied. Low levels of FEV1 serve as a crucial clinical indicator for the severity and progression of COPD. A continuous decline in FEV1 reflects structural lung damage, whereas stabilization or improvement in FEV1 trajectories indicates a positive therapeutic response.
+
+------------------------------------------------------------------------
+
+## **Objective**
+
+Pulmonary function was assessed longitudinally across multiple post-baseline clinical visits to address the primary research question :
+
+Does the investigational treatment significantly slow down or reverse the decline of FEV1 over time compared to placebo ?
+
+------------------------------------------------------------------------
+
+## **Study Design and Data**
+
+This project utilizes a validated artificial dataset consisting of 800 subjects tracked across multiple clinical visits. While artificial, this dataset is meticulously structured under industry-standard CDISC ADaM specifications.
+
+The data simulates a randomized, double-blind, placebo-controlled parallel-group trial where patients were randomized to receive either the active investigational drug or a placebo.
+
+------------------------------------------------------------------------
+
+## **Variable Specifications**
+
+- USUBJID: subject ID.
+
+- AVISIT: visit number.
+
+- ARMCD: treatment, TRT or PBO.
+
+- RACE: 3-category race.
+
+- SEX: sex.
+
+- FEV1_BL: FEV1 at baseline (%).
+
+- FEV1: FEV1 at study visits.
+
+- WEIGHT: weighting variable.
+
+- VISITN: integer order of the visit.
+
+- VISITN2: coordinates of the visit for distance calculation.
+
+------------------------------------------------------------------------
+
+## **Descriptive Analysis of Continuous Variables**
+
+```{r}
+library(prettyR)
+vars_quanti <- c("FEV1_BL", "FEV1")
+describe(
+fev_data[, vars_quanti],
+num.desc = c("min", "max", "mean", "median", "sd", "valid.n")
+)
+
+```
+
+```{r}
+par(mfrow = c(1, 2))
+# Boucle sur toutes les variables quantitatives avec courbe de densité
+
+for (var in vars_quanti) {
+# 1. Tracer l'histogramme en mode "densité de probabilité" (prob = TRUE)
+hist(fev_data[[var]],
+main = paste("Distribution of", var), # Titre dynamique
+xlab = var,                           # Nom de la variable sur l'axe X
+ylab = "Density",                     # L'axe Y devient la Densité
+las  = 1,  # Labels horizontaux
+col  = "white",                       # Barres blanches
+border = "black",                     # Contours noirs
+prob = TRUE)                          # OBLIGATOIRE pour la densité
+# 2. Calculer et superposer la courbe de densité
+# na.rm = TRUE est crucial car il peut y avoir des NA dans la colonne 'nodes'
+lines(density(fev_data[[var]], na.rm = TRUE),
+col = "red",                         # Courbe en rouge pour le contraste
+lwd = 1)                             # Épaisseur de la ligne
+# 3. AJOUT DU CADRE AUTOUR DU GRAPHIQUE
+box(col = "black", lwd = 1)
+}
+
+```
+
+------------------------------------------------------------------------
+
+## **Descriptive Analysis of Categorical Variables**
+
+```{r, message=FALSE, warning=FALSE}
+library(gtsummary)
+library(dplyr)
+fev_data %>%
+select(ARMCD, SEX, RACE) %>%
+tbl_summary(
+by = ARMCD,
+statistic = all_categorical() ~ "{n} ({p}%)",
+digits    = all_categorical() ~ list(0, 1),
+missing_text = "Missing"
+) %>%
+bold_labels()
+```
+
+```{r}
+
+par(mfrow = c(1, 2))
+
+# ── 1. SEX (Sexe) ──────────────────────────────────────
+barplot(
+  table(fev_data$SEX),
+  ylab      = "Frequency",
+  xlab      = "Sex",
+  col       = "white",
+  border    = "black",
+  las       = 1,
+  cex.names = 1.0,
+  cex.lab   = 1.0
+)
+
+# ── 2. TRT / PBO ───────────
+barplot(
+  table(fev_data$ARMCD),
+  ylab      = "Frequency",
+  xlab      = "Treatment",
+  col       = "white",
+  border    = "black",
+  las       = 1,
+  cex.names = 1.0,
+  cex.lab   = 1.0
+)
+```
+
+```{r}
+# ── 3. RACE ───────────────
+barplot(
+  table(fev_data$RACE),
+  ylab      = "Frequency",
+  xlab      = "Race",
+  col       = "white",
+  border    = "black",
+  las       = 1,
+  cex.names = 1.0,
+  cex.lab   = 1.0
+)
+
+```
+
+------------------------------------------------------------------------
+
+## **Missing data**
+
+The primary outcome, FEV1, presents a missing data rate of 32.88% (263 missing observations), while all baseline covariates and operational variables remain fully observed. In alignment with standard clinical trial methodology for longitudinal data, these missing values are assumed to follow a Missing At Random (MAR) mechanism.
+
+```{r}
+tab_NA <- data.frame(  
+  Variables = names(fev_data), 
+  n_NA = colSums(is.na(fev_data)), 
+  percent_NA = round(colMeans(is.na(fev_data)) * 100, 2),  
+  row.names = NULL )  
+
+print(tab_NA)
+```
+
+```{r, include=FALSE}
+
+#Ces NA sont supposées MAR 
+
+#Exemple 1 (Effet secondaire) : Les patients sous le traitement à investiguer ont plus de nausées. À cause de cela, ils ratent plus souvent leur visite 3 (AVISIT). Le fait que le FEV1 soit manquant dépend du traitement, pas du fait que leur fonction respiratoire soit bonne ou mauvaise.
+
+#Exemple 2 (Historique de santé) : Un patient dont le FEV1 était déjà très bas aux visites 1 et 2 se décourage et ne vient pas à la visite 3. Le manque dépend des valeurs passées (déjà observées). MMRM utilise l'historique du patient pour estimer ce qu'aurait été sa valeur à la visite 3.
+```
+
+------------------------------------------------------------------------
+
+## **Statistical Modeling and Diagnostics**
+
+A Mixed Model for Repeated Measures (MMRM) estimated via Restricted Maximum Likelihood (REML) is applied. This framework naturally accounts for the missing observations without the need for explicit or artificial data imputation, ensuring unbiased and efficient treatment effect estimates. To evaluate the robustness of this assumption, relevant sensitivity analyses will be conducted.
+
+The assumption of normality for the MMRM residuals is fully satisfied.
+
+```{r, message=FALSE, warning=FALSE}
+# Ajustement du modèle MMRM
+fit_mmrm <- mmrm(
+  formula = FEV1 ~ FEV1_BL + ARMCD * AVISIT + us(AVISIT | USUBJID),
+  data = fev_data
+)
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+# Check the normal distribution of model residuals using HISTOGRAM & Q-Q PLOT:
+
+# 1. Extract residuals from your mmrm model (adjusted for covariance structure)
+residus <- residuals(fit_mmrm, type = "normalized")
+
+# 2. Configure R to display 2 plots side-by-side
+par(mfrow = c(1, 2))
+
+# 3. PLOT 1: The Histogram
+hist(residus, 
+     probability = TRUE, 
+     col = "lightblue", 
+     main = "Residuals Histogram (FEV1)", 
+     xlab = "Normalized Residuals", 
+     ylab = "Density")
+
+# Add the red theoretical normal curve on top
+curve(dnorm(x, mean = mean(residus, na.rm = TRUE), sd = sd(residus, na.rm = TRUE)), 
+      col = "red", lwd = 1, add = TRUE)
+
+# 4. PLOT 2: The Q-Q Plot
+qqnorm(residus, 
+       main = "Residuals Q-Q Plot (FEV1)", 
+       xlab = "Theoretical Quantiles", 
+       ylab = "Sample Quantiles")
+qqline(residus, col = "red", lwd = 1) # Add the red reference line
+
+```
+
+------------------------------------------------------------------------
+
+# **Results**
+
+Patients in the investigational treatment arm (TRT) maintained consistently higher adjusted mean FEV1 values compared to the placebo arm (PBO) throughout the study duration.
+
+At Visit 1, the adjusted mean FEV1 was 37.3 (95% CI: 35.7, 38.8) for the TRT group compared to 32.6 (95% CI: 31.1, 34.1) for the PBO group. This therapeutic advantage remained stable across subsequent timepoints, with estimated differences between groups of +4.4 units at Visit 2, +3.5 units at Visit 3, and +5.0 units at the final visit (Visit 4: TRT mean = 53.0 [95% CI: 50.6, 55.4] vs. PBO mean = 48.0 [95% CI: 45.6, 50.4]).
+
+Overall, these results demonstrate a sustained parallel improvement in both treatment groups rather than a progressive divergence over time.
+
+```{r, include=FALSE}
+summary(fit_mmrm)
+```
+
+```{r, include=FALSE}
+anova(fit_mmrm)
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+library(emmeans)
+
+# 1. Calculer les moyennes ajustées par traitement et par visite
+lsmeans_ev <- emmeans(fit_mmrm, ~ ARMCD | AVISIT)
+print(lsmeans_ev)
+
+# 2. Obtenir le contraste (la différence entre les bras) à chaque visite
+contrasts_ev <- pairs(lsmeans_ev, reverse = TRUE) # reverse = TRUE pour faire Traitement - Placebo
+print(contrasts_ev)
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+library(ggplot2)
+
+# Convertir les LS Means en dataframe pour ggplot
+df_plot <- as.data.frame(lsmeans_ev)
+
+ggplot(df_plot, aes(x = AVISIT, y = emmean, group = ARMCD, color = ARMCD)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = 0.1) +
+  theme_minimal() +
+  labs(title = "Changes in Adjusted FEV1 by Visit",
+       x = "Visit", y = "LS Means of FEV1 (C.I 95%)")
+```
+
+------------------------------------------------------------------------
+
+# **Sensitivity Analysis**
+
+To evaluate the impact of missing data (32.88% of FEV1 observations), a sensitivity analysis was conducted by restricting the dataset strictly to patients who completed all four post-baseline visits (Complete Case Analysis).
+
+The results demonstrated exceptional robustness, as the therapeutic benefit of the investigational treatment remained statistically significant at every single timepoint. At Visit 1, the adjusted treatment effect was 6.09 units (p = 0.0023). This significant advantage persisted through Visit 2 (Difference = 4.58, p = 0.0134) and Visit 3 (Difference = 5.41, p = 0.0004).
+
+At the final visit (Visit 4), the treatment group exhibited a substantial superiority of 9.92 units in adjusted mean FEV1 over the placebo group. Despite a noticeable increase in standard error (SE = 3.97) and a reduction in degrees of freedom (df = 36.9) due to the exclusion of incomplete profiles, the treatment effect remained fully significant (p = 0.0171).
+
+These findings confirm that the primary efficacy conclusions are highly reliable and robust.
+
+```{r, message=FALSE, warning=FALSE}
+# 1. Identifier les patients qui ont des données à TOUTES les visites
+complete_subjects <- names(which(table(fev_data$USUBJID[!is.na(fev_data$FEV1)]) == 4))
+
+# 2. Filtrer le jeu de données
+data_complete <- subset(fev_data, USUBJID %in% complete_subjects)
+
+# 3. Refaire tourner le MMRM sur ce sous-groupe
+fit_sens_complete <- mmrm(
+  formula = FEV1 ~ FEV1_BL + ARMCD * AVISIT + us(AVISIT | USUBJID),
+  data = data_complete
+)
+
+# 4. Vérifier les nouveaux contrastes
+pairs(emmeans(fit_sens_complete, ~ ARMCD | AVISIT), reverse = TRUE)
+
+```
+
+------------------------------------------------------------------------
+
+# **Conclusion**
+
+The primary MMRM analysis demonstrated a highly significant, rapid, and sustained therapeutic benefit for the investigational treatment group (TRT) compared to the placebo group (PBO). Patients receiving the active drug exhibited a clinically meaningful improvement of +4.66 FEV1 units at the very first post-baseline visit (p \< 0.0001). This therapeutic window remained remarkably stable and statistically solid across all subsequent timepoints, culminating in a +5.01 FEV1 unit superiority over placebo at the final evaluation (Visit 4, p = 0.0039). The parallel nature of the treatment trajectories indicates that while the drug does not progressively accelerate lung function recovery over time, it establishes and maintains a powerful and durable protective shift in respiratory capacity.
+
+Furthermore, the Complete Case sensitivity analysis fully corroborated these findings, where the treatment effect remained statistically significant at every visit and even increased in magnitude (+9.92 units at Visit 4, p = 0.0171) among trial completers.
+
+In conclusion, the investigational treatment represents a highly effective therapeutic strategy for COPD management.
