@@ -6,14 +6,23 @@ Welcome!
 This portfolio showcases my work in clinical trials, RWE data analysis, and statistical modeling using R.
 
 
-
-      
 <p style="margin-top: 20px;">
   <strong>
-    <a href="./CV%20Abderrezzaq%20KADOUCHE_Biostatisticien_M%C3%A9thodologiste.pdf"
-       download="CV_Abderrezzaq_KADOUCHE_Biostatisticien_Methodologiste.pdf"
+    <a href="./CV%20Abderrezzaq%20KADOUCHE_Biostatisticien_M%C3%A9thodologiste_M%C3%A9decin.pdf"
+       download="CV Abderrezzaq KADOUCHE_Biostatisticien_Méthodologiste_Médecin.pdf"
        style="color: #0066cc; text-decoration: underline;">
-      📥Download my Curriculum Vitae (PDF)
+      📥 Download my CV (French version)
+    </a>
+  </strong>
+</p>
+
+
+<p style="margin-top: 20px;">
+  <strong>
+    <a href="./CV%20Abderrezzaq%20KADOUCHE_ENG_Biostatistician_Methodologist_Medical%20Doctor.pdf"
+       download="CV Abderrezzaq KADOUCHE_ENG_Biostatistician_Methodologist_Medical Doctor.pdf"
+       style="color: #0066cc; text-decoration: underline;">
+      📥 Download my CV (English version)
     </a>
   </strong>
 </p>
