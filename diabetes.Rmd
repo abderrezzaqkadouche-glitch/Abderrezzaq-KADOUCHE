@@ -1,0 +1,448 @@
+---
+title: "Identifying Clinical Risk Factors for the Early Detection of Diabetes"
+
+subtitle: 
+
+author: "Abderrezzaq KADOUCHE" 
+
+output:  
+ html_document:     
+  code_folding: hide 
+---
+
+------------------------------------------------------------------------
+
+```{r, include=FALSE}
+
+#importer les données
+
+library(mlbench)
+
+data("SynthDiabetes2", package = "mlbench")
+
+```
+
+## **Introduction**
+
+Diabetes mellitus is one of the most critical global public health challenges of the 21st century, characterized by chronic hyperglycemia resulting from defects in insulin secretion, insulin action, or both. 
+The insidious nature of type 2 diabetes means that metabolic abnormalities often develop progressively over several years without noticeable symptoms. Consequently, many patients remain undiagnosed until irreversible microvascular or macrovascular complications emerge. In this context, secondary prevention through early screening is paramount. Identifying structural and physiological warning signs during routine clinical examinations can significantly alter patient outcomes, allowing for timely lifestyle modifications or therapeutic interventions that can slow down or even reverse the progression of the disease.
+
+--------------------------------------------------------------------------------
+
+## **Objective**
+
+The primary objective of this study is to identify the specific clinical and physiological variables that independently predict the onset of diabetes. 
+
+--------------------------------------------------------------------------------
+
+## **Data source**
+
+This research utilizes a synthetic database to replicate the statistical properties of the historical medical study conducted by Smith, Everhart, Dickson, Knowler, and Johannes (1988). The original cohort targeted high-risk individuals, specifically female patients of Pima Native American heritage aged 21 and older, monitored by the National Institute of Diabetes and Digestive and Kidney Diseases (NIDDK). 
+
+--------------------------------------------------------------------------------
+
+## **Variable Specifications**
+
+This dataset contains 9 variables, including 8 clinical predictors and 1 binary outcome variable:
+
+* `pregnant`: **Number of times pregnant**. Counts the patient's total number of pregnancies.
+* `glucose`: **Plasma glucose concentration**. Measured during a 2-hour oral glucose tolerance test.
+* `pressure`: **Diastolic blood pressure**. Measured in millimeters of mercury (mm Hg).
+* `triceps`: **Triceps skin fold thickness**. Measured in millimeters (mm) to estimate subcutaneous fat.
+* `insulin`: **2-hour serum insulin**. Measured in milli-international units per liter (mu U/ml).
+* `mass`: **Body mass index (BMI)**. Calculated as weight in kilograms divided by height in meters squared (\(kg/m^2\)).
+* `pedigree`: **Diabetes pedigree function**. A score that represents the genetic risk based on family history.
+* `age`: **Age**. The patient's age in years.
+* `diabetes`: Binary indicator representing the test result for diabetes (positive / negative).
+
+--------------------------------------------------------------------------------
+```{r, include=FALSE}
+#Vérifier le codage des variables
+str(SynthDiabetes2)
+
+#recoder en factor les variables catégorielles si besoin
+
+```
+
+## **Descriptive analysis of continuous variables**
+
+```{r}
+library(prettyR)
+
+vars_quanti <- c("pregnant", "glucose", "pressure", "triceps", "insulin", "mass", "pedigree", "age")
+
+describe(
+SynthDiabetes2[, vars_quanti],
+num.desc = c("min", "max", "mean", "median", "sd", "valid.n")
+)
+```
+
+
+```{r}
+par(mfrow = c(1, 2))
+# Boucle sur toutes les variables quantitatives avec courbe de densité
+
+for (var in vars_quanti) {
+# 1. Tracer l'histogramme en mode "densité de probabilité" (prob = TRUE)
+hist(SynthDiabetes2[[var]],
+main = paste("Distribution of", var), # Titre dynamique
+xlab = var,                           # Nom de la variable sur l'axe X
+ylab = "Density",                     # L'axe Y devient la Densité
+las  = 1,  # Labels horizontaux
+col  = "white",                       # Barres blanches
+border = "black",                     # Contours noirs
+prob = TRUE)                          # OBLIGATOIRE pour la densité
+# 2. Calculer et superposer la courbe de densité
+# na.rm = TRUE est crucial car il peut y avoir des NA dans la colonne 'nodes'
+lines(density(SynthDiabetes2[[var]], na.rm = TRUE),
+col = "red",                         # Courbe en rouge pour le contraste
+lwd = 1)                             # Épaisseur de la ligne
+# 3. AJOUT DU CADRE AUTOUR DU GRAPHIQUE
+box(col = "black", lwd = 1)
+}
+
+```
+
+
+--------------------------------------------------------------------------------
+
+## **Descriptive analysis of categorical variables**
+
+```{r, message=FALSE, warning=FALSE}
+
+library(gtsummary)
+
+library(dplyr)
+
+library (forcats)
+
+SynthDiabetes2 %>%
+select(diabetes) %>% 
+  # 1. On renomme d'abord les modalités 
+  mutate(diabetes = fct_recode(diabetes, 
+                               "Negative" = "neg", 
+                               "Positive" = "pos")) %>%
+tbl_summary(
+label = list(
+  diabetes ~ "Diabetes"),
+statistic = all_categorical() ~ "{n} ({p}%)",
+digits    = all_categorical() ~ list(0, 1),
+missing_text = "Missing"
+) %>%
+bold_labels()
+
+```
+
+```{r}
+
+# ── 1. diabetes──────────────────────────────────────
+barplot(
+  table(SynthDiabetes2$diabetes),
+  ylab      = "Frequency",
+  xlab      = "Diabetes",
+  names.arg = c("Negative", "Positive"),
+  col       = "white",
+  border    = "black",
+  las       = 1,
+  cex.names = 1.0,
+  cex.lab   = 1.0
+)
+
+```
+
+--------------------------------------------------------------------------------
+
+## **Missing data**
+
+An analysis of the missingness patterns revealed a critical methodology challenge, particularly regarding `insulin` and `triceps` which present missingness rates of 52.73% and 32.68% respectively. 
+In clinical settings, collecting 2-hour serum insulin levels and measuring triceps skinfold thickness require specific diagnostic tools and specialized procedures, making them frequently missing from standard patient charts. Conversely, other health indicators such as `glucose`, `pressure`, and `mass` show very low missingness rates (< 5%). 
+Conducting a strict complete-case analysis on all nine variables would cause the sample size to plummet from 768 to 361 observations, which represents a data loss of 53%, sacrificing over half of the data and severely compromising the model's statistical power. 
+
+
+```{r, message=FALSE, warning=FALSE}
+tab_NA <- data.frame(  
+  Variables = names(SynthDiabetes2), 
+  n_NA = colSums(is.na(SynthDiabetes2)), 
+  percent_NA = round(colMeans(is.na(SynthDiabetes2)) * 100, 2),  
+  row.names = NULL )  
+
+print(tab_NA)
+```
+
+### **Duplicate Record Detection**
+
+Prior to fitting the statistical model, the dataset was audited to ensure the independence of observations. The analysis flagged exactly one perfect duplicate record in the dataset, with a redundant copy identified at row 436. This duplicate observation was removed from the dataset.
+
+```{r, message=FALSE, warning=FALSE}
+#Vérifier les doublons
+sum(duplicated(SynthDiabetes2)) 
+
+which(duplicated(SynthDiabetes2) ==TRUE) #n°436
+
+library(dplyr)
+
+# Trouver l'index de la copie et de l'original
+original <- which(duplicated(SynthDiabetes2, fromLast = TRUE))
+copie <- which(duplicated(SynthDiabetes2))
+
+# Afficher les deux numéros de lignes
+cat("La ligne originale est la ligne numéro :", original, "\n")
+cat("La ligne dupliquée (la copie) est la ligne numéro :", copie, "\n")
+
+SynthDiabetes2[c(original, copie), ]
+
+data <- SynthDiabetes2[-436, ]
+
+```
+
+### **Missing Data Management**
+
+A complete-case analysis was applied. This approach filters the dataset to retain only the observations with fully documented records across all 9 variables, including `insulin` and `triceps`. While this strategy significantly reduces the final sample size to 361 observations due to the high missingness rates in insulin and skinfold measurements, it allows for a comprehensive model that evaluates the simultaneous impact of every studied variable.
+
+
+```{r, message=FALSE, warning=FALSE}
+complete_data <- na.omit(data)
+
+sum(is.na(complete_data))
+
+nrow(complete_data)
+
+round((nrow(SynthDiabetes2) - nrow(complete_data)) / nrow(SynthDiabetes2) * 100, 1)
+
+
+```
+
+--------------------------------------------------------------------------------
+```{r, include=FALSE}
+#Faire une matrice de corrélation pour avoir une idée sur la relation entre les différentes variables
+
+#les variables qualitatives binaires + qualitatives ordonnées ==> doivent être codés en num  ==> donc créer un autre jeu de données pour ne pas abîmer l'original
+
+data2 <- as.data.frame(complete_data)
+
+library(corrplot)  
+
+data2$diabetes <- as.numeric(data2$diabetes)
+
+library(dplyr)
+library(forcats)
+
+data2 <- data2 %>%
+  mutate(diabetes = if_else(diabetes == 2, 1, 0))
+
+# Vérification du résultat
+table(data2$diabetes)
+table(complete_data$diabetes)
+# Vérification instantanée : vous devez voir uniquement des 0 et des 1
+table(data2$diabetes)
+
+
+str(data2) 
+
+var <- c("pregnant", "glucose", "pressure", "triceps", "insulin", "mass", "pedigree", "age", "diabetes") #inclure toutes les variables
+
+round(cor(data2[,var], use="complete.obs"),digits=3) 
+
+corrplot(cor(data2[,var], use="complete.obs"), method="circle") 
+
+corrplot(cor(data2[,var], use="complete.obs"), method="number", order="hclust", type="upper", tl.col="black")
+
+##########
+
+```
+
+## **Statistical Modeling and Diagnostics**
+
+To evaluate the combined influence of the studied physiological indicators on the outcome, a multiple logistic regression model was implemented.
+
+```{r, message=FALSE, warning=FALSE}
+
+# Ajustement du modèle : régression logistique multiple
+
+mod <- glm(diabetes ~ ., data = complete_data, family = binomial)
+
+```
+
+Prior to interpreting the model's coefficients, the underlying statistical assumptions were rigorously audited to ensure the validity, stability, and reliability of our inferences. 
+All diagnostic checks were successfully satisfied: 
+First, the sample size sufficiency was verified using the Events Per Variable (EPV) rule; The standard threshold of at least 10 events per explanatory variable was fully validated. 
+Furthermore, the assumption of log-linearity for the continuous predictors was assessed and satisfied, confirming a linear relationship with the log-odds of the outcome. 
+Finally, all other diagnostic checks were successfully met: the Variance Inflation Factors (VIF) confirmed the complete absence of multicollinearity, Cook's distance values remained safely under critical thresholds, indicating no highly influential individual profiles. 
+
+```{r, message=FALSE, warning=FALSE}
+
+# Vérifier les conditions de validité : 
+
+#1) variable à expliquer binaire
+
+#2) indépendance des observations
+
+
+#3) au moins 5-10 évènements par variable explicative => OK
+
+table(complete_data$diabetes) 
+#nM+ = 119
+
+
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+#4) Absence de multicolinéarité => OK (VIF < 5)
+library(car)
+vif(mod) # Calcul du Variance Inflation Factor (VIF)
+```
+
+```{r, message=FALSE, warning=FALSE}
+#5) Linéarité du logit pour chaque variable explicative quantitative
+#La régression logistique suppose que chaque prédicteur continu est linéaire par rapport au logit (log-odds), et non à la probabilité.
+
+library(ggpubr)
+
+
+probabilities <- predict(mod, type = "response")
+
+# numeric predictors + the logit, reshaped long
+num <- complete_data[sapply(complete_data, is.numeric)]
+
+logit <- log(probabilities / (1 - probabilities))
+long <- data.frame(
+  logit     = rep(logit, ncol(num)),
+  predictor = rep(names(num), each = nrow(num)),
+  value     = unlist(num)
+)
+
+ggscatter(long, x = "logit", y = "value", size = 0.5, alpha = 0.4,
+          add = "loess", add.params = list(color = "#3a86d4")) +
+  facet_wrap(~ predictor, scales = "free_y")
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+#6) Absence de valeurs influentes excessives
+
+#La distance de Cook permet de repérer si certains patients influencent de manière disproportionnée les coefficients du modèle. Une règle empirique stipule qu'une observation est problématique si sa distance de Cook est supérieure à (4/n) où (n) est la taille de l'échantillon, soit (4/361 = approx 0.011). (seuil critique = 1)
+
+
+# 1. Graphique de la distance de Cook
+plot(mod, which = 4)
+
+# 2. Extraction des lignes dont la distance de Cook dépasse le seuil de 4/n
+seuil_cook <- 4 / nrow(complete_data)
+influential_obs <- which(cooks.distance(mod) > seuil_cook)
+
+# Afficher les numéros de lignes des profils influents
+print(influential_obs)
+
+#Même si les lignes 400, 619 et 595 se détachent nettement des autres, leur valeur maximale reste extrêmement basse (0.06, ce qui est très loin du seuil critique de 1).
+
+#Condition: OK. Il n'y a aucun point excessivement aberrant ou influent capable de fausser à lui seul les conclusions de la régression logistique. 
+
+```
+
+```{r, include=FALSE}
+library(ggpubr)
+
+
+resid.df <- data.frame(
+  index     = seq_len(nrow(complete_data)),
+  std_resid = rstandard(mod),
+  diabetes  = complete_data$diabetes
+)
+
+ggscatter(resid.df, x = "index", y = "std_resid", color = "diabetes",
+          palette = "jco", size = 1, alpha = 0.6,
+          ylab = "Standardized residual") +
+  geom_hline(yintercept = c(-3, 3), linetype = "dashed")
+
+#aucun individu ne présente un résidu standardisé supérieur à 3 ou inférieur à -3, la condition d'absence d'outliers résiduels est  validée. 
+
+#Le modèle n'effectue aucune erreur de prédiction "aberrante" ou extrême, ce qui confirme une fois de plus la stabilité et la qualité globale de la régression logistique.
+```
+
+
+
+```{r, include=FALSE}
+deviance(mod) / df.residual(mod) #calculer la dispersion (si>1: surdispersion) [METHODE 1] ; #Pas de surdispersion (family=binomial) #si surdispersion (family=quasi binomial)
+```
+
+--------------------------------------------------------------------------------
+
+# **Results**
+
+### Statistically Significant Predictors
+
+* **Plasma Glucose Concentration (`glucose`):** This variable was found to be the most highly significant predictor in the model (β = 0.0356, p < 0.001). Transforming this coefficient into an Odds Ratio yields OR = 1.04 (\(95\%\text{ CI: }[1.03, 1.05]\)). This means that for each additional unit (mg/dL) of plasma glucose, the odds of a positive diabetes diagnosis increase by exactly 4.0%, keeping all other variables constant.
+* **Diabetes Pedigree Function (`pedigree`):** The genetic family history score also displays a statistically significant positive effect on the outcome. It carries a powerful Odds Ratio of OR = 2.46 (\(95\%\text{ CI: }[1.24, 5.03]\)). This indicates that a one-unit increase in the pedigree function score more than doubles the odds of diabetes, multiplying them by 2.46.
+
+### Non-Significant Predictors
+
+The remaining factors did not achieve statistical significance at the 5% level, meaning their independent associations with a positive diabetes status could not be confirmed in this multivariable context:
+
+* **Body Mass Index (`mass`):** Although displaying a positive trend, the effect was not significant (β = 0.0396, OR = 1.04, p = 0.1138).
+
+* **2-Hour Serum Insulin (`insulin`):** The effect was negligible and non-significant (β = 0.0018, OR = 1.00, p = 0.1543).
+
+* **Triceps Skin Fold Thickness (`triceps`):** Showed no significant relationship (β = 0.0212, OR = 1.02, p = 0.2418).
+
+* **Age (`age`):** Did not reach the significance threshold (β = 0.0159, OR = 1.02, p = 0.3271).
+
+* **Diastolic Blood Pressure (`pressure`):** Showed non-significant coefficient (β = 0.0080, OR = 1.01, p = 0.5290).
+
+* **Number of Pregnancies (`pregnant`):** Displayed the highest p-value among all predictors (β = 0.0197, OR = 1.02, p = 0.7143).
+
+
+```{r, message=FALSE, warning=FALSE}
+summary(mod)
+
+round(exp(cbind(OR = coef(mod), confint(mod))), 2)
+
+```
+
+
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+
+library(broom)
+
+tidy(mod, exponentiate = TRUE, conf.int = TRUE)
+
+```
+
+--------------------------------------------------------------------------------
+
+# **Conclusion**
+
+
+The results reveal that out of the eight studied physiological variables, only two exert a statistically significant impact on the probability of a positive diabetes diagnosis when controlling for all other clinical metrics:
+
+* **Plasma Glucose Concentration :** This continuous predictor stands out as a highly significant driver of diabetes risk (\(p < 0.001\)). For every 1 mg/dL increase in glucose level during the oral tolerance test, the odds of being diagnosed with diabetes significantly escalate by **4%** (\(\text{OR} = 1.04\), \(95\%\text{ CI: }[1.03, 1.05]\)).
+
+* **Diabetes Pedigree Function :** Representing hereditary predisposition, this genetic score displays a significant association with the outcome (\(p = 0.0108\)). For each one-unit increase in the pedigree function, the odds of diabetes diagnosis dramatically surge by **146%** (\(\text{OR} = 2.46\), \(95\%\text{ CI: }[1.24, 5.03]\)).
+
+```{r, message=FALSE, warning=FALSE}
+
+library(ggpubr)
+
+par(mfrow = c(1, 2))
+
+
+ggscatter(data2, x = "glucose", y = "diabetes", color = "grey50",
+          alpha = 0.2, xlab = "Plasma glucose concentration",
+          ylab = "Probability of diabetes (pos)") +
+  geom_smooth(method = "glm", method.args = list(family = "binomial"),
+              color = "#3a86d4", fill = "grey70")
+
+
+
+ggscatter(data2, x = "pedigree", y = "diabetes", color = "grey50",
+          alpha = 0.2, xlab = "Diabetes pedigree function",
+          ylab = "Probability of diabetes (pos)") +
+  geom_smooth(method = "glm", method.args = list(family = "binomial"),
+              color = "#3a86d4", fill = "grey70")
+
+```
+
+
+In terms of public health and screening strategies, these findings demonstrate that while physiological indicators like weight and age are universally monitored, individual genetic background and raw glucose tolerance performance remain the absolute paramount signals for early diagnostic classification. This highlights the critical importance of combining genetic profiling with standardized biochemical assays to optimize early prevention and intervention frameworks for high-risk populations.
+
