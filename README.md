@@ -42,8 +42,15 @@ This portfolio showcases my work in clinical trials, RWE data analysis, and stat
 
 **Statistical Methods Used:**
 * Mixed Model for Repeated Measures (MMRM).
+
+### 3.[Clinical Predictors of Type 2 Diabetes](diabetes.html)
+
+**Statistical Methods Used:**
+* Multivariable Logistic Regression.
+* Multiple Imputation for missing data.
+* Complete-case analysis.
   
-### 3.[Determinants of Plasma Retinol Concentrations: A Cross-Sectional Study](retinol.html)
+### 4.[Determinants of Plasma Retinol Concentrations: A Cross-Sectional Study](retinol.html)
 
 **Statistical Methods Used:**
 * Multiple Linear Regression.
@@ -52,7 +59,7 @@ This portfolio showcases my work in clinical trials, RWE data analysis, and stat
 * ANOVA (Analysis of Variance).
 
 
-### 4.[Lung Cancer Cohort: A Survival Analysis](lung.html)
+### 5.[Lung Cancer Cohort: A Survival Analysis](lung.html)
 
 **Statistical Methods Used:** 
 * Kaplan-Meier curves.
