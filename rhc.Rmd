@@ -1,0 +1,878 @@
+---
+title: "Impact of Right Heart Catheterization on 30-Day Mortality in Critically Ill Patients: An Observational Cohort Study"
+
+subtitle: "A Propensity Score Approach to Mitigate Selection Bias"
+
+author: "Abderrezzaq KADOUCHE" 
+
+output:  
+ html_document:     
+  code_folding: hide 
+---
+
+------------------------------------------------------------------------
+
+```{r, include=FALSE}
+
+#importer les données
+
+# 1. Installer le package ATbounds depuis le CRAN
+#install.packages("ATbounds")
+
+# 2. Charger le package
+library(ATbounds)
+
+# 3. Charger le jeu de données 
+data(RHC)
+
+# 4. Vérifier que les données sont bien présentes
+dim(RHC)
+head(RHC)
+
+help(RHC)
+
+```
+
+## **Introduction**
+
+Right Heart Catheterization is an invasive diagnostic procedure used to directly measure cardiac function in critically ill patients. In an ideal world, the efficacy of such procedures would be tested via Randomized Controlled Trials. However, in critical care settings, withholding or applying treatment at random is often unethical or logistically impossible. Ultimately, this study provides the ultimate playground for validating and comparing causal inference methodologies in a real-world setting.
+
+------------------------------------------------------------------------
+
+## **Objective**
+
+The primary objective of this project is to rigorously estimate the causal impact of Right Heart Catheterization (RHC) on 30-day patient survival rates.
+
+------------------------------------------------------------------------
+
+## **Study Design and Data**
+
+This case study leverages observational data from the SUPPORT cohort study, focusing on patients admitted to intensive care units. Because treatment assignment was non-randomized, the study design mirrors a quasi-experimental framework where confounding variables must be statistically adjusted to isolate the true causal effect of the intervention.
+
+The analytics dataset consists of the following key structures:
+
+**• Sample Profile:** A total of n = 5735 critically ill patients, split into a treatment group of 2184 individuals who received RHC and a control group of 3551 individuals.
+
+**• Temporal Windows:** The treatment variable evaluates whether RHC was performed within the critical 24-hour window following hospital admission.
+
+**• Outcome :** The primary clinical endpoint is a binary indicator tracking 30-day post-admission survival (1 if survived, 0 if deceased).
+
+------------------------------------------------------------------------
+
+## **Variable Specifications** (CDISC SDTM Alignment)
+
+The dataset encompasses **74 variables**, mapping directly to standard CDISC SDTM domains. All covariates are categorized into their respective CDISC domains :
+
+### Core Protocol Variables
+
+- **Treatment (Intervention - PR Domain):** `swang1` → Mapped to **PRTRT** (Procedure Name). A binary indicator tracking whether Right Heart Catheterization (Procedure) was performed within 24 hours of ICU admission.
+
+- **Outcome (Disposition - DS Domain):** `death` → Mapped to **DSTERM / DSDECOD** (Disposition Event: Death). A binary endpoint capturing 30-day post-admission mortality status.
+
+### Baseline Covariates Mapping (72 Variables across SDTM Domains)
+
+| CDISC SDTM Domain | Domain Code | Description & Dataset Variables | Count |
+|:-----------------|:----------------:|:-----------------|:----------------:|
+| **Demographics** | **DM** | Key baseline characteristics including Age (`age`), Sex (`sex`), Race (`race`), income, and insurance categories. | 6 |
+| **Medical History** | **MH** | Pre-existing conditions and comorbidities recorded at baseline (e.g., historical cardiovascular disease, renal failure, or malignancies). | 12 |
+| **Vital Signs** | **VS** | Objective physiological measures tracked during the initial 24 hours: body temperature, mean blood pressure, and heart rate. | 5 |
+| **Laboratory Results** | **LB** | Extensive blood chemistry and hematology profile: serum electrolytes (sodium, potassium), pH, PaO₂/FiO₂ ratio, bilirubin, albumin, and white blood cell (WBC) count. | 30 |
+| **Subject Questionnaires & Clinical Scales** | **QS / FT** | Derived scoring indexes measuring acute severity and baseline neurological function: APACHE III score, Glasgow Coma Scale (GCS), and ADL indexes. | 10 |
+| **Inclusion / Exclusion Criteria** | **IE** | Primary diagnostic categories defining critical care admission eligibility (e.g., Acute Respiratory Failure, COPD, CHF, Cirrhosis, Coma, or Sepsis). | 9 |
+
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+
+#Vérifier le codage des variables
+
+str(RHC)
+
+#recoder en factor les variables catégorielles : 
+
+# 1. Copie de sauvegarde du jeu de données original
+data <- RHC
+
+# Exposition
+data$RHC <- factor(data$RHC)
+
+# Outcome (survie : 1 = survie, 0 = décès)
+data$survival <- factor(data$survival)
+
+# Variables catégorielles à convertir en facteurs
+vars_cat <- c("cat1_CHF", "cat1_Cirrhosis", "cat1_Colon_Cancer", "cat1_Coma",
+              "cat1_COPD", "cat1_Lung_Cancer", "cat1_MOSF_Malignancy",
+              "cat1_MOSF_Sepsis", "ca_Metastatic", "ca_Yes",
+              "ninsclas_Medicaid", "ninsclas_Medicare",
+              "ninsclas_Medicare_and_Medicaid", "ninsclas_No_insurance",
+              "ninsclas_Private_and_Medicare",
+              "race_black", "race_other",
+              "income3", "income1", "income2",
+              "resp_Yes", "card_Yes", "neuro_Yes", "gastr_Yes",
+              "renal_Yes", "meta_Yes", "hema_Yes", "seps_Yes",
+              "trauma_Yes", "ortho_Yes", "dnr1_Yes",
+              "sex_Female",
+              "cat2_Cirrhosis", "cat2_Colon_Cancer", "cat2_Coma",
+              "cat2_Lung_Cancer", "cat2_MOSF_Malignancy", "cat2_MOSF_Sepsis",
+              "wt0")
+
+# Conversion en facteurs
+for(v in vars_cat) {
+  data[[v]] <- factor(data[[v]])
+}
+
+# Vérification
+#str(data)
+
+#Détection de variables binaires codées en num : min=0 , max=1 
+
+data$cardiohx <- factor(data$cardiohx)
+data$chfhx <- factor(data$chfhx)
+data$dementhx <- factor(data$dementhx)
+data$psychhx <- factor(data$psychhx)
+data$chrpulhx <- factor(data$chrpulhx)
+data$renalhx <- factor(data$renalhx)
+data$liverhx <- factor(data$liverhx)
+data$gibledhx <- factor(data$gibledhx)
+data$malighx <- factor(data$malighx)
+data$immunhx <- factor(data$immunhx)
+data$transhx <- factor(data$transhx)
+data$amihx <- factor(data$amihx)
+
+# Ajouter les nouvelles variables
+vars_cat <- c(vars_cat, "cardiohx", "chfhx", "dementhx", "psychhx", "chrpulhx",
+              "renalhx", "liverhx", "gibledhx", "malighx", "immunhx",
+              "transhx", "amihx")
+```
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+str(data)
+
+```
+
+```{r, include=FALSE}
+print(vars_cat)
+```
+
+## **Descriptive analysis of continuous variables**
+
+```{r, message=FALSE, warning=FALSE}
+library(prettyR)
+
+
+
+# Extraire  les variables numériques
+vars_quanti <- names(data)[sapply(data, is.numeric)]
+
+# Description des variables quantitatives
+describe(
+  data[, vars_quanti],
+  num.desc = c("min", "max", "mean", "median", "sd", "valid.n")
+)
+```
+
+------------------------------------------------------------------------
+
+# **Data Management**
+
+Prior to statistical analysis, a systematic data cleaning process was conducted to identify implausible or erroneous values. For each continuous variable, the ten lowest and ten highest observations were inspected.
+
+Values of zero for weight (wtkilo1), mean arterial pressure (meanbp1), respiratory rate (resp1), heart rate (hrt1), and white blood cell count (wblc1) were considered biologically implausible and were therefore replaced by missing values (NA).
+
+For albumin (alb1), implausibly high values (11.0 and 29.0 g/dL) were deemed to be data entry errors and were treated accordingly.
+
+In contrast, extreme values for temperature (temp1), pH (ph1), PaO2/FiO2 ratio (pafi1), and Glasgow Coma Scale (scoma1) were judged to be clinically plausible in the intensive care setting and were retained.
+
+Bilirubin and creatinine were converted from mg/L to µmol/L and from mg/dL to µmol/L, respectively, and albumin from g/dL to g/L to harmonise units with French clinical practice.
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+
+
+##############DATA MANAGEMENT###############################
+
+# Poids
+sort(data$wtkilo1)[1:10]
+sort(data$wtkilo1, decreasing = TRUE)[1:10]
+# Compter les poids = 0
+sum(data$wtkilo1 == 0, na.rm = TRUE)
+# Remplacer les poids = 0 par NA
+data$wtkilo1[data$wtkilo1 == 0] <- NA
+
+################################################################
+
+# Pression artérielle moyenne
+sort(data$meanbp1)[1:10]
+sort(data$meanbp1, decreasing = TRUE)[1:10]
+# Compter les PAM = 0
+sum(data$meanbp1 == 0, na.rm = TRUE)
+# Remplacer les PAM = 0 par NA
+data$meanbp1[data$meanbp1 == 0] <- NA
+
+################################################################
+
+# Fréquence respiratoire
+sort(data$resp1)[1:10]
+sort(data$resp1, decreasing = TRUE)[1:10]
+# Compter les FR = 0
+sum(data$resp1 == 0, na.rm = TRUE)
+# Remplacer les FR = 0 par NA
+data$resp1[data$resp1 == 0] <- NA
+
+################################################################
+
+# Fréquence cardiaque
+sort(data$hrt1)[1:10]
+sort(data$hrt1, decreasing = TRUE)[1:10]
+# Compter les FC = 0
+sum(data$hrt1 == 0, na.rm = TRUE)
+# Remplacer les FC = 0 par NA
+data$hrt1[data$hrt1 == 0] <- NA
+
+################################################################
+
+# Globules blancs
+sort(data$wblc1)[1:10]
+sort(data$wblc1, decreasing = TRUE)[1:10]
+# Compter les GB = 0
+sum(data$wblc1 == 0, na.rm = TRUE)
+# Remplacer les GB = 0 par NA
+data$wblc1[data$wblc1 == 0] <- NA
+
+################################################################
+
+# Score de Glasgow
+sort(data$scoma1)[1:10]
+sort(data$scoma1, decreasing = TRUE)[1:10]
+
+#Dans ce jeu de données, il est codé de 0 à 100 (et non de 3 à 15 comme l'échelle classique).
+
+################################################################
+
+# pH
+sort(data$ph1)[1:10]
+sort(data$ph1, decreasing = TRUE)[1:10]
+
+################################################################
+
+# Température
+sort(data$temp1)[1:10]
+sort(data$temp1, decreasing = TRUE)[1:10]
+#Les valeurs de temp1 sont jugées cohérentes avec le contexte de réanimation.
+
+################################################################
+
+# Rapport PaO2/FiO2
+sort(data$pafi1)[1:10]
+sort(data$pafi1, decreasing = TRUE)[1:10]
+#Nous considérons que les valeurs de "pafi1" sont cohérentes avec le contexte de réanimation.
+
+################################################################
+
+# Bilirubine
+sort(data$bili1)[1:10]
+sort(data$bili1, decreasing = TRUE)[1:10]
+data$bili1 <- round(RHC$bili1 * 17.1, 2) # Conversion de la bilirubine de mg/L en µmol/L
+
+################################################################
+
+# Créatinine
+sort(data$crea1)[1:10]
+sort(data$crea1, decreasing = TRUE)[1:10]
+data$crea1 <- round(RHC$crea1 * 88.4, 2) # Conversion de la créatinine de mg/dL en µmol/L
+
+################################################################
+
+# Albumine
+sort(data$alb1)[1:10]
+sort(data$alb1, decreasing = TRUE)[1:10]
+data$alb1 <- round(RHC$alb1 * 10 , 2) #convertir en g/L
+data$alb1[data$alb1 > 100] <- NA
+```
+
+After cleaning, all variables were checked for consistency and completeness before inclusion in the analysis.
+
+```{r, message=FALSE, warning=FALSE}
+describe(
+  data[, vars_quanti],
+  num.desc = c("min", "max", "mean", "median", "sd", "valid.n")
+)
+```
+
+------------------------------------------------------------------------
+
+# **Descriptive analysis of categorical variables**
+
+```{r, message=FALSE, warning=FALSE}
+
+library (gtsummary)
+
+library(dplyr)
+
+data %>%
+  select(RHC, survival, vars_cat) %>%
+  tbl_summary(
+    by = RHC,
+    statistic = all_categorical() ~ "{n} ({p}%)",
+    digits    = all_categorical() ~ list(0, 1),
+    missing_text = "Missing"
+  ) %>%
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**RHC status**") %>%
+  modify_header(
+    stat_1 ~ "**No RHC**",
+    stat_2 ~ "**RHC**"
+  ) %>%
+  modify_table_body(
+    ~ .x %>%
+      mutate(
+        label = case_when(
+          # ---- Labels des variables ----
+          label == "survival" ~ "Survival at 30 days",
+          label == "cardiohx" ~ "Cardiovascular symptoms",
+          label == "chfhx" ~ "Congestive heart failure",
+          label == "dementhx" ~ "Dementia, stroke or Parkinson's disease",
+          label == "psychhx" ~ "Psychiatric history, active psychosis or severe depression",
+          label == "chrpulhx" ~ "Chronic pulmonary disease",
+          label == "renalhx" ~ "Chronic renal disease or dialysis",
+          label == "liverhx" ~ "Cirrhosis or hepatic failure",
+          label == "gibledhx" ~ "Upper GI bleeding",
+          label == "malighx" ~ "Solid tumor, leukemia or lymphoma",
+          label == "immunhx" ~ "Immunosuppression, transplant, HIV or diabetes",
+          label == "transhx" ~ "Transfer from another hospital",
+          label == "amihx" ~ "Definite myocardial infarction",
+          label == "cat1_CHF" ~ "Primary disease: CHF",
+          label == "cat1_Cirrhosis" ~ "Primary disease: Cirrhosis",
+          label == "cat1_Colon_Cancer" ~ "Primary disease: Colon cancer",
+          label == "cat1_Coma" ~ "Primary disease: Coma",
+          label == "cat1_COPD" ~ "Primary disease: COPD",
+          label == "cat1_Lung_Cancer" ~ "Primary disease: Lung cancer",
+          label == "cat1_MOSF_Malignancy" ~ "Primary disease: MOSF w/ malignancy",
+          label == "cat1_MOSF_Sepsis" ~ "Primary disease: MOSF w/ sepsis",
+          label == "ca_Metastatic" ~ "Metastatic cancer",
+          label == "ca_Yes" ~ "Localized cancer",
+          label == "ninsclas_Medicaid" ~ "Insurance: Medicaid",
+          label == "ninsclas_Medicare" ~ "Insurance: Medicare",
+          label == "ninsclas_Medicare_and_Medicaid" ~ "Insurance: Medicare & Medicaid",
+          label == "ninsclas_No_insurance" ~ "Insurance: No insurance",
+          label == "ninsclas_Private_and_Medicare" ~ "Insurance: Private & Medicare",
+          label == "race_black" ~ "Race: Black",
+          label == "race_other" ~ "Race: Other",
+          label == "income3" ~ "Income > $50k",
+          label == "income1" ~ "Income $11–$25k",
+          label == "income2" ~ "Income $25–$50k",
+          label == "resp_Yes" ~ "Respiratory diagnosis",
+          label == "card_Yes" ~ "Cardiovascular diagnosis",
+          label == "neuro_Yes" ~ "Neurological diagnosis",
+          label == "gastr_Yes" ~ "Gastrointestinal diagnosis",
+          label == "renal_Yes" ~ "Renal diagnosis",
+          label == "meta_Yes" ~ "Metabolic diagnosis",
+          label == "hema_Yes" ~ "Hematological diagnosis",
+          label == "seps_Yes" ~ "Sepsis diagnosis",
+          label == "trauma_Yes" ~ "Trauma diagnosis",
+          label == "ortho_Yes" ~ "Orthopedic diagnosis",
+          label == "dnr1_Yes" ~ "Do Not Resuscitate status on day 1",
+          label == "sex_Female" ~ "Female sex",
+          label == "cat2_Cirrhosis" ~ "Secondary disease: Cirrhosis",
+          label == "cat2_Colon_Cancer" ~ "Secondary disease: Colon cancer",
+          label == "cat2_Coma" ~ "Secondary disease: Coma",
+          label == "cat2_Lung_Cancer" ~ "Secondary disease: Lung cancer",
+          label == "cat2_MOSF_Malignancy" ~ "Secondary disease: MOSF w/ malignancy",
+          label == "cat2_MOSF_Sepsis" ~ "Secondary disease: MOSF w/ sepsis",
+          label == "wt0" ~ "Weight = 0 (missing)",
+          
+          # ---- Labels des modalités 0/1, variable par variable ----
+          # survival
+          label == "0" & variable == "survival" ~ "Died within 30 days",
+          label == "1" & variable == "survival" ~ "Survived after 30 days",
+          
+          # cardiohx
+          label == "0" & variable == "cardiohx" ~ "No cardiovascular symptoms",
+          label == "1" & variable == "cardiohx" ~ "Cardiovascular symptoms",
+          
+          # chfhx
+          label == "0" & variable == "chfhx" ~ "No congestive heart failure",
+          label == "1" & variable == "chfhx" ~ "Congestive heart failure",
+          
+          # dementhx
+          label == "0" & variable == "dementhx" ~ "No dementia/stroke/Parkinson",
+          label == "1" & variable == "dementhx" ~ "Dementia/stroke/Parkinson",
+          
+          # psychhx
+          label == "0" & variable == "psychhx" ~ "No psychiatric history",
+          label == "1" & variable == "psychhx" ~ "Psychiatric history",
+          
+          # chrpulhx
+          label == "0" & variable == "chrpulhx" ~ "No chronic pulmonary disease",
+          label == "1" & variable == "chrpulhx" ~ "Chronic pulmonary disease",
+          
+          # renalhx
+          label == "0" & variable == "renalhx" ~ "No chronic renal disease",
+          label == "1" & variable == "renalhx" ~ "Chronic renal disease",
+          
+          # liverhx
+          label == "0" & variable == "liverhx" ~ "No cirrhosis/hepatic failure",
+          label == "1" & variable == "liverhx" ~ "Cirrhosis/hepatic failure",
+          
+          # gibledhx
+          label == "0" & variable == "gibledhx" ~ "No upper GI bleeding",
+          label == "1" & variable == "gibledhx" ~ "Upper GI bleeding",
+          
+          # malighx
+          label == "0" & variable == "malighx" ~ "No malignancy",
+          label == "1" & variable == "malighx" ~ "Malignancy",
+          
+          # immunhx
+          label == "0" & variable == "immunhx" ~ "No immunosuppression",
+          label == "1" & variable == "immunhx" ~ "Immunosuppression",
+          
+          # transhx
+          label == "0" & variable == "transhx" ~ "No transfer from another hospital",
+          label == "1" & variable == "transhx" ~ "Transfer from another hospital",
+          
+          # amihx
+          label == "0" & variable == "amihx" ~ "No myocardial infarction",
+          label == "1" & variable == "amihx" ~ "Myocardial infarction",
+          
+          # cat1_*
+          label == "0" & variable == "cat1_CHF" ~ "No",
+          label == "1" & variable == "cat1_CHF" ~ "Yes",
+          label == "0" & variable == "cat1_Cirrhosis" ~ "No",
+          label == "1" & variable == "cat1_Cirrhosis" ~ "Yes",
+          label == "0" & variable == "cat1_Colon_Cancer" ~ "No",
+          label == "1" & variable == "cat1_Colon_Cancer" ~ "Yes",
+          label == "0" & variable == "cat1_Coma" ~ "No",
+          label == "1" & variable == "cat1_Coma" ~ "Yes",
+          label == "0" & variable == "cat1_COPD" ~ "No",
+          label == "1" & variable == "cat1_COPD" ~ "Yes",
+          label == "0" & variable == "cat1_Lung_Cancer" ~ "No",
+          label == "1" & variable == "cat1_Lung_Cancer" ~ "Yes",
+          label == "0" & variable == "cat1_MOSF_Malignancy" ~ "No",
+          label == "1" & variable == "cat1_MOSF_Malignancy" ~ "Yes",
+          label == "0" & variable == "cat1_MOSF_Sepsis" ~ "No",
+          label == "1" & variable == "cat1_MOSF_Sepsis" ~ "Yes",
+          
+          # ca_*
+          label == "0" & variable == "ca_Metastatic" ~ "No",
+          label == "1" & variable == "ca_Metastatic" ~ "Yes",
+          label == "0" & variable == "ca_Yes" ~ "No",
+          label == "1" & variable == "ca_Yes" ~ "Yes",
+          
+          # ninsclas_*
+          label == "0" & variable == "ninsclas_Medicaid" ~ "No",
+          label == "1" & variable == "ninsclas_Medicaid" ~ "Yes",
+          label == "0" & variable == "ninsclas_Medicare" ~ "No",
+          label == "1" & variable == "ninsclas_Medicare" ~ "Yes",
+          label == "0" & variable == "ninsclas_Medicare_and_Medicaid" ~ "No",
+          label == "1" & variable == "ninsclas_Medicare_and_Medicaid" ~ "Yes",
+          label == "0" & variable == "ninsclas_No_insurance" ~ "No",
+          label == "1" & variable == "ninsclas_No_insurance" ~ "Yes",
+          label == "0" & variable == "ninsclas_Private_and_Medicare" ~ "No",
+          label == "1" & variable == "ninsclas_Private_and_Medicare" ~ "Yes",
+          
+          # race_*
+          label == "0" & variable == "race_black" ~ "No",
+          label == "1" & variable == "race_black" ~ "Yes",
+          label == "0" & variable == "race_other" ~ "No",
+          label == "1" & variable == "race_other" ~ "Yes",
+          
+          # income*
+          label == "0" & variable == "income3" ~ "No",
+          label == "1" & variable == "income3" ~ "Yes",
+          label == "0" & variable == "income1" ~ "No",
+          label == "1" & variable == "income1" ~ "Yes",
+          label == "0" & variable == "income2" ~ "No",
+          label == "1" & variable == "income2" ~ "Yes",
+          
+          # *_Yes (diagnostics)
+          label == "0" & variable == "resp_Yes" ~ "No respiratory diagnosis",
+          label == "1" & variable == "resp_Yes" ~ "Respiratory diagnosis",
+          label == "0" & variable == "card_Yes" ~ "No cardiovascular diagnosis",
+          label == "1" & variable == "card_Yes" ~ "Cardiovascular diagnosis",
+          label == "0" & variable == "neuro_Yes" ~ "No neurological diagnosis",
+          label == "1" & variable == "neuro_Yes" ~ "Neurological diagnosis",
+          label == "0" & variable == "gastr_Yes" ~ "No gastrointestinal diagnosis",
+          label == "1" & variable == "gastr_Yes" ~ "Gastrointestinal diagnosis",
+          label == "0" & variable == "renal_Yes" ~ "No renal diagnosis",
+          label == "1" & variable == "renal_Yes" ~ "Renal diagnosis",
+          label == "0" & variable == "meta_Yes" ~ "No metabolic diagnosis",
+          label == "1" & variable == "meta_Yes" ~ "Metabolic diagnosis",
+          label == "0" & variable == "hema_Yes" ~ "No hematological diagnosis",
+          label == "1" & variable == "hema_Yes" ~ "Hematological diagnosis",
+          label == "0" & variable == "seps_Yes" ~ "No sepsis diagnosis",
+          label == "1" & variable == "seps_Yes" ~ "Sepsis diagnosis",
+          label == "0" & variable == "trauma_Yes" ~ "No trauma diagnosis",
+          label == "1" & variable == "trauma_Yes" ~ "Trauma diagnosis",
+          label == "0" & variable == "ortho_Yes" ~ "No orthopedic diagnosis",
+          label == "1" & variable == "ortho_Yes" ~ "Orthopedic diagnosis",
+          
+          # dnr1_Yes
+          label == "0" & variable == "dnr1_Yes" ~ "No DNR status",
+          label == "1" & variable == "dnr1_Yes" ~ "DNR status",
+          
+          # sex_Female
+          label == "0" & variable == "sex_Female" ~ "Male",
+          label == "1" & variable == "sex_Female" ~ "Female",
+          
+          # cat2_*
+          label == "0" & variable == "cat2_Cirrhosis" ~ "No",
+          label == "1" & variable == "cat2_Cirrhosis" ~ "Yes",
+          label == "0" & variable == "cat2_Colon_Cancer" ~ "No",
+          label == "1" & variable == "cat2_Colon_Cancer" ~ "Yes",
+          label == "0" & variable == "cat2_Coma" ~ "No",
+          label == "1" & variable == "cat2_Coma" ~ "Yes",
+          label == "0" & variable == "cat2_Lung_Cancer" ~ "No",
+          label == "1" & variable == "cat2_Lung_Cancer" ~ "Yes",
+          label == "0" & variable == "cat2_MOSF_Malignancy" ~ "No",
+          label == "1" & variable == "cat2_MOSF_Malignancy" ~ "Yes",
+          label == "0" & variable == "cat2_MOSF_Sepsis" ~ "No",
+          label == "1" & variable == "cat2_MOSF_Sepsis" ~ "Yes",
+          
+          # wt0
+          label == "0" & variable == "wt0" ~ "Weight not missing",
+          label == "1" & variable == "wt0" ~ "Weight missing",
+          
+          TRUE ~ label
+        )
+      )
+  ) %>%
+  bold_labels()
+```
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+
+library(gtsummary)
+
+library(dplyr)
+
+data %>%
+  select(RHC, survival,vars_cat) %>%
+  tbl_summary(
+    by = RHC,
+    statistic = all_categorical() ~ "{n} ({p}%)",
+    digits    = all_categorical() ~ list(0, 1),
+    missing_text = "Missing"
+  ) %>%
+  
+modify_spanning_header(c("stat_1", "stat_2") ~ "**RHC status**") %>%
+  modify_header(
+    stat_1 ~ "**No RHC**",
+    stat_2 ~ "**RHC**"
+  )%>%
+  modify_table_body(
+    ~ .x %>%
+      mutate(
+        label = case_when(
+          label == "survival" ~ "Survival status",
+          label == "0" ~ "Died within 30 days",
+          label == "1" ~ "Survived after 30 days of admission",
+          TRUE ~ label
+        )
+      )
+    )%>%
+  bold_labels()
+```
+
+------------------------------------------------------------------------
+
+```{r, include=FALSE}
+sum(duplicated(data)) 
+```
+
+## **Missing data**
+
+Missing values were identified in six variables: weight (8.98%), heart rate (2.77%), respiratory rate (2.37%), mean blood pressure (1.39%), white blood cell count (0.07%), and albumin (0.03%).
+
+Given the low overall proportion of missing data, a complete-case analysis was performed for the primary propensity score model, resulting in the exclusion of patients with missing values in any of the covariates. This approach was considered appropriate as the missingness was limited and unlikely to introduce substantial bias.
+
+```{r}
+tab_NA <- data.frame(  
+  Variables = names(data), 
+  n_NA = colSums(is.na(data)), 
+  percent_NA = round(colMeans(is.na(data)) * 100, 2),  
+  row.names = NULL )  
+
+print(tab_NA[tab_NA$n_NA > 0, ])
+```
+
+------------------------------------------------------------------------
+
+## **Statistical Modeling and Diagnostics**
+
+To estimate the effect of right heart catheterization (RHC) on 30-day survival, we used a propensity score approach. A multivariable logistic regression model was fitted to estimate the propensity score, including all potential confounders identified in bivariate analysis (p \< 0.20 for both RHC and mortality).
+
+Complete-case analysis was performed (n = 4999). Patients were then matched 1:1 on the propensity score using nearest-neighbor matching with a caliper of 0.1, yielding 1408 matched pairs.
+
+The effect of RHC on survival was estimated using conditional logistic regression with matched pairs as strata.
+
+```{r, message=FALSE, warning=FALSE}
+
+# ====================================================
+# IDENTIFICATION DES FACTEURS DE CONFUSION
+# ====================================================
+
+# 1. Liste des variables à tester
+vars_a_tester <- c("age", "edu", "das2d3pc", "surv2md1", "aps1", "scoma1",
+                   "wtkilo1", "temp1", "meanbp1", "resp1", "hrt1", "pafi1",
+                   "paco21", "ph1", "wblc1", "hema1", "sod1", "pot1",
+                   "crea1", "bili1", "alb1",
+                   "cardiohx", "chfhx", "dementhx", "psychhx", "chrpulhx",
+                   "renalhx", "liverhx", "gibledhx", "malighx", "immunhx",
+                   "transhx", "amihx",
+                   "cat1_CHF", "cat1_Cirrhosis", "cat1_Colon_Cancer", "cat1_Coma",
+                   "cat1_COPD", "cat1_Lung_Cancer", "cat1_MOSF_Malignancy", "cat1_MOSF_Sepsis",
+                   "ca_Metastatic", "ca_Yes",
+                   "ninsclas_Medicaid", "ninsclas_Medicare", "ninsclas_Medicare_and_Medicaid",
+                   "ninsclas_No_insurance", "ninsclas_Private_and_Medicare",
+                   "race_black", "race_other",
+                   "income3", "income1", "income2",
+                   "resp_Yes", "card_Yes", "neuro_Yes", "gastr_Yes", "renal_Yes",
+                   "meta_Yes", "hema_Yes", "seps_Yes", "trauma_Yes", "ortho_Yes",
+                   "dnr1_Yes", "sex_Female")
+
+# 2. Créer un tableau pour stocker les p-values
+resultats_biv <- data.frame(
+  variable = vars_a_tester,
+  p_RHC = NA,
+  p_survival = NA,
+  confondant = NA
+)
+
+# 3. Boucle pour tester chaque variable
+for(i in seq_along(vars_a_tester)) {
+  v <- vars_a_tester[i]
+  
+  # Test avec RHC (exposition)
+  if(is.numeric(data[[v]])) {
+    p_rhc <- t.test(data[[v]] ~ data$RHC)$p.value
+  } else {
+    p_rhc <- chisq.test(table(data[[v]], data$RHC))$p.value
+  }
+  
+  # Test avec survival (outcome)
+  if(is.numeric(data[[v]])) {
+    p_surv <- t.test(data[[v]] ~ data$survival)$p.value
+  } else {
+    p_surv <- chisq.test(table(data[[v]], data$survival))$p.value
+  }
+  
+  resultats_biv$p_RHC[i] <- p_rhc
+  resultats_biv$p_survival[i] <- p_surv
+}
+
+# 4. Identifier les facteurs de confusion (p < 0.20 pour les deux)
+resultats_biv$confondant <- ifelse(
+  resultats_biv$p_RHC < 0.20 & resultats_biv$p_survival < 0.20,
+  "YES", "NO"
+)
+
+# 5. Afficher les résultats
+print(resultats_biv)
+
+# 6. Liste des facteurs de confusion
+facteurs_confusion <- resultats_biv$variable[resultats_biv$confondant == "YES"]
+
+# 1. Liste des facteurs de confusion identifiés
+
+vars_conf <- c("age", "edu", "das2d3pc", "surv2md1", "aps1", "scoma1",
+               "wtkilo1", "meanbp1", "resp1", "pafi1",
+               "paco21", "ph1", "wblc1", "hema1",
+               "crea1", "bili1", "alb1",
+               "cardiohx", "chfhx", "dementhx", "psychhx", "chrpulhx",
+               "liverhx", "gibledhx", "malighx", "immunhx",
+               "transhx",
+               "cat1_CHF", "cat1_Cirrhosis", "cat1_Coma", "cat1_COPD",
+               "cat1_Lung_Cancer",
+               "ca_Metastatic", "ca_Yes",
+               "ninsclas_Medicaid", "ninsclas_Medicare",
+               "ninsclas_Medicare_and_Medicaid", "ninsclas_No_insurance",
+               "income3", "income2",
+               "resp_Yes", "card_Yes", "gastr_Yes", "renal_Yes",
+               "hema_Yes", "seps_Yes", "trauma_Yes",
+               "dnr1_Yes", "sex_Female")
+
+# Créer data_complete
+data_complete <- na.omit(data[, c("RHC", "survival", vars_conf)])
+
+```
+
+```{r, include=FALSE}
+
+print(facteurs_confusion)
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+# ====================================================
+# MODÈLE DE SCORE DE PROPENSION 
+# ====================================================
+
+#1. Le modèle logistique pour estimer le score de propension (ne pas inclure l'outcome, juste l'exposition)
+
+mod_score <- glm(RHC ~ age + edu + das2d3pc + surv2md1 + aps1 + scoma1 +
+                   wtkilo1 + meanbp1 + resp1 + pafi1 +
+                   paco21 + ph1 + wblc1 + hema1 +
+                   crea1 + bili1 + alb1 +
+                   cardiohx + chfhx + dementhx + psychhx + chrpulhx +
+                   liverhx + gibledhx + malighx + immunhx +
+                   transhx +
+                   cat1_CHF + cat1_Cirrhosis + cat1_Coma + cat1_COPD +
+                   cat1_Lung_Cancer +
+                   ca_Metastatic + ca_Yes +
+                   ninsclas_Medicaid + ninsclas_Medicare +
+                   ninsclas_Medicare_and_Medicaid + ninsclas_No_insurance +
+                   income3 + income2 +
+                   resp_Yes + card_Yes + gastr_Yes + renal_Yes +
+                   hema_Yes + seps_Yes + trauma_Yes +
+                   dnr1_Yes + sex_Female,
+  data=data_complete,
+  family=binomial)
+
+
+# 2. Prédire le score
+data_complete$score <- predict(mod_score, type = "response")
+
+#3. Appariement
+
+library(MatchIt)#ne gère pas les NA, donc les retirer
+
+
+data_match <- matchit(RHC ~ age + edu + das2d3pc + surv2md1 + aps1 + scoma1 +
+                       wtkilo1 + meanbp1 + resp1 + pafi1 +
+                       paco21 + ph1 + wblc1 + hema1 +
+                       crea1 + bili1 + alb1 +
+                       cardiohx + chfhx + dementhx + psychhx + chrpulhx +
+                       liverhx + gibledhx + malighx + immunhx +
+                       transhx +
+                       cat1_CHF + cat1_Cirrhosis + cat1_Coma + cat1_COPD +
+                       cat1_Lung_Cancer +
+                       ca_Metastatic + ca_Yes +
+                       ninsclas_Medicaid + ninsclas_Medicare +
+                       ninsclas_Medicare_and_Medicaid + ninsclas_No_insurance +
+                       income3 + income2 +
+                       resp_Yes + card_Yes + gastr_Yes + renal_Yes +
+                       hema_Yes + seps_Yes + trauma_Yes +
+                       dnr1_Yes + sex_Female,
+                     data = data_complete, 
+                     method = "nearest", 
+                     distance = data_complete$score, 
+                     caliper = 0.1, 
+                     ratio = 1)
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+
+# 4. Vérifier l'équilibre des covariables
+
+library(cobalt)
+love.plot(data_match, thresholds = c(m = .1), abs = TRUE)
+
+#5. extraire les données appariées
+
+data_apparié <- match.data(data_match)
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+# ====================================================
+# POST-MATCHING DISTRIBUTION ASSESSMENT
+# ====================================================
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+
+
+# 2. Pre-matching boxplot (on data_complete)
+# -------------------------------------------
+boxplot(score ~ RHC, data = data_complete,
+        col = c("blue", "red"),
+        names = c("No RHC", "RHC"),
+        main = "Pre-matching",
+        xlab = "Group",
+        ylab = "Propensity score")
+
+# 2. Post-matching boxplot
+# -------------------------
+boxplot(score ~ RHC, data = data_apparié,
+        col = c("blue", "red"),
+        names = c("No RHC", "RHC"),
+        main = "Post-matching",
+        xlab = "Group",
+        ylab = "Propensity score")
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+
+# 1. Pre-matching distribution (on data_complete)
+# ------------------------------------------------
+plot(density(data_complete$score[data_complete$RHC == 0], na.rm = TRUE),
+     main = "Pre-matching",
+     ylab = "Density",
+     xlab = "Propensity score",
+     col = "blue",
+     lwd = 3,
+     ylim = c(0, max(density(data_complete$score, na.rm = TRUE)$y)))
+
+lines(density(data_complete$score[data_complete$RHC == 1], na.rm = TRUE), 
+      col = "red", lwd = 3)
+
+legend("topright",
+       legend = c("No RHC", "RHC"),
+       fill = c("blue", "red"),
+       inset = c(0.05, 0))
+
+
+# 1. Post-matching distribution (on data_apparié)
+
+# Tracer la distribution
+plot(density(data_apparié$score[data_apparié$RHC == 0], na.rm = TRUE),
+     main = "Post-matching",
+     ylab = "Density",
+     xlab = "Propensity score",
+     col = "blue",
+     lwd = 3,
+     ylim = c(0, max(density(data_apparié$score, na.rm = TRUE)$y)))
+
+lines(density(data_apparié$score[data_apparié$RHC == 1], na.rm = TRUE), 
+      col = "red", lwd = 3)
+
+legend("topright",
+       legend = c("No RHC", "RHC"),
+       fill = c("blue", "red"),
+       inset = c(0.05, 0))
+
+```
+
+------------------------------------------------------------------------
+
+# **Results**
+
+Propensity score matching yielded a sample of 1408 matched pairs of patients (n = 2816), with excellent covariate balance (all standardized mean differences below 0.1 after matching). In this matched sample, 960 events (deaths) were observed. Conditional logistic regression showed that right heart catheterization (RHC) was significantly associated with improved 30-day survival (OR = 0.82; 95% CI: 0.71–0.95). These findings suggest that, in this intensive care unit population, RHC is associated with a protective effect on short-term mortality, independent of observed confounders.
+
+```{r}
+library(survival)
+
+data_apparié$survival <- as.numeric(data_apparié$survival)
+
+
+# 6. Modèle logistique conditionnel (sur les paires)
+mod_final <- clogit(survival ~ RHC + strata(subclass), 
+                    data = data_apparié)
+
+# 3. Résultats (Odds Ratio)
+summary(mod_final)
+exp(cbind(OR = coef(mod_final), confint(mod_final)))
+
+```
+
+------------------------------------------------------------------------
+
+# **Conclusion**
+
+This observational study, using a rigorous propensity score matching methodology on identified confounders, provides evidence of a significant association between right heart catheterization and improved 30-day survival in critically ill patients.
+
+Patients who received right heart catheterization (RHC) had 18% lower odds of dying within 30 days compared with matched patients who did not undergo the procedure.
+
+While these findings are encouraging, they should be interpreted with caution due to the observational nature of the study and the potential for unmeasured confounding. Randomized controlled trials would be necessary to confirm the true benefit of RHC in this population.
