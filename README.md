@@ -43,14 +43,20 @@ This portfolio showcases my work in clinical trials, RWE data analysis, and stat
 **Statistical Methods Used:**
 * Mixed Model for Repeated Measures (MMRM).
 
-### 3.[Clinical Predictors of Type 2 Diabetes](diabetes.html)
+### 3.[Estimating the Causal Impact of RHC on 30-Day Mortality in Critically Ill Patients: An Observational Cohort Study](rhc.html)
+
+**Statistical Methods Used:**
+* Propensity score and matching.
+* Conditional logistic regression model.
+
+### 4.[Clinical Predictors of Type 2 Diabetes](diabetes.html)
 
 **Statistical Methods Used:**
 * Multivariable Logistic Regression.
 * Multiple Imputation for missing data.
 * Complete-case analysis.
   
-### 4.[Determinants of Plasma Retinol Concentrations: A Cross-Sectional Study](retinol.html)
+### 5.[Determinants of Plasma Retinol Concentrations: A Cross-Sectional Study](retinol.html)
 
 **Statistical Methods Used:**
 * Multiple Linear Regression.
@@ -59,7 +65,7 @@ This portfolio showcases my work in clinical trials, RWE data analysis, and stat
 * ANOVA (Analysis of Variance).
 
 
-### 5.[Lung Cancer Cohort: A Survival Analysis](lung.html)
+### 6.[Lung Cancer Cohort: A Survival Analysis](lung.html)
 
 **Statistical Methods Used:** 
 * Kaplan-Meier curves.
