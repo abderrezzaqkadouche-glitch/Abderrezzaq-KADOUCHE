@@ -49,14 +49,22 @@ This portfolio showcases my work in clinical trials, RWE data analysis, and stat
 * Propensity score and matching.
 * Conditional logistic regression model.
 
-### 4.[Clinical Predictors of Type 2 Diabetes](diabetes.html)
+### 4.[Prognostic Factors of Melanoma-Specific Mortality: A Retrospective Cohort](melanoma.html)
+
+**Statistical Methods Used:**
+* Competing Risk Analysis.
+* Cumulative incidence functions (CIF).
+* Gray’s test.
+* Fine and Gray subdistribution hazard model.
+  
+### 5.[Clinical Predictors of Type 2 Diabetes](diabetes.html)
 
 **Statistical Methods Used:**
 * Multivariable Logistic Regression.
 * Multiple Imputation for missing data.
 * Complete-case analysis.
   
-### 5.[Determinants of Plasma Retinol Concentrations: A Cross-Sectional Study](retinol.html)
+### 6.[Determinants of Plasma Retinol Concentrations: A Cross-Sectional Study](retinol.html)
 
 **Statistical Methods Used:**
 * Multiple Linear Regression.
@@ -65,7 +73,7 @@ This portfolio showcases my work in clinical trials, RWE data analysis, and stat
 * ANOVA (Analysis of Variance).
 
 
-### 6.[Lung Cancer Cohort: A Survival Analysis](lung.html)
+### 7.[Lung Cancer Cohort: A Survival Analysis](lung.html)
 
 **Statistical Methods Used:** 
 * Kaplan-Meier curves.
