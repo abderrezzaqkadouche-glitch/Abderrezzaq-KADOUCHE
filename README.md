@@ -72,8 +72,12 @@ This portfolio showcases my work in clinical trials, RWE data analysis, and stat
 * Student test.
 * ANOVA (Analysis of Variance).
 
+### 7.[Analyzing Hospital Length of Stay: A Registry-Based Study](length-of-hospital-stay.html)
 
-### 7.[Lung Cancer Cohort: A Survival Analysis](lung.html)
+**Statistical Methods Used:**
+* Negative Binomial Regression.
+  
+### 8.[Lung Cancer Cohort: A Survival Analysis](lung.html)
 
 **Statistical Methods Used:** 
 * Kaplan-Meier curves.
