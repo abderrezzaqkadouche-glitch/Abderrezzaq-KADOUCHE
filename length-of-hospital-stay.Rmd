@@ -1,0 +1,397 @@
+---
+title: "Analyzing Hospital Length of Stay: A Registry-Based Study"
+
+subtitle: "A Negative Binomial Regression Approach to Address Data Overdispersion"
+
+author: "Abderrezzaq KADOUCHE" 
+
+output:  
+ html_document:     
+  code_folding: hide 
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+------------------------------------------------------------------------
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+#importer les données
+library(COUNT)
+
+data(medpar, package="COUNT")
+
+```
+
+# **Introduction**
+
+The optimization of healthcare delivery requires a deep understanding of inpatient resource utilization, where the length of stay serves as a primary metric for operational efficiency and hospital performance.
+
+Analyzing this metric helps healthcare administrators balance bed occupancy, predict clinical costs, and evaluate the quality of patient management.
+
+------------------------------------------------------------------------
+
+# **Objective**
+
+The primary objective of this study is to identify and quantify the clinical, demographic, and institutional determinants of the length of hospital stay for Medicare patients.
+Specifically, this analysis aims to:
+
+- Determine if Health Maintenance Organization membership alters hospitalization duration.
+
+- Analyze the influence of patient age and racial identification on stay lengths.
+
+- Quantify how elective, urgent, and emergency admissions impact inpatient care duration.
+
+------------------------------------------------------------------------
+
+# **Study Design and Data**
+
+This study employs a retrospective, cross-sectional design using data extracted from the 1991 US national Medicare inpatient hospital database.
+The national dataset compiles hospital filing records annually to monitor healthcare utilization across the United States.
+The analysis is restricted to the state of Arizona and focuses exclusively on a single diagnostic group: Diagnostic Related Group 112 (DRG 112), which corresponds to Percutaneous Cardiovascular Procedures.
+
+The final sample consists of 1495 unique patient observations randomly selected from the original database.
+Because a hospital stay must last at least one day to be recorded in this dataset, zero counts are structurally excluded from the study design.
+
+------------------------------------------------------------------------
+
+# **Variable Specifications**
+
+- `los`: Length of hospital stay in days.
+  This is the dependent (response) variable, representing discrete count data that is structurally restricted to values greater than or equal to 1.
+
+- `hmo`: Patient managed care status.
+  A binary indicator where 1 denotes membership in a Health Maintenance Organization and 0 denotes traditional fee-for-service coverage.
+
+- `white`: Patient racial identification.
+  A binary indicator where 1 indicates the patient identifies as Caucasian and 0 indicates otherwise.
+
+- `died`: In-hospital clinical outcome.
+  A binary indicator where 1 signifies that the patient died during the hospitalization event and 0 signifies survival to discharge.
+
+- `age80`: Patient age threshold indicator.
+  A binary predictor where 1 represents patients aged 80 years and over, and 0 represents patients under 80.
+
+- `type`: Admission pathway.
+  A categorical variable operationalized through three distinct binary indicators: type1 (Elective admission), type2 (Urgent admission), and type3 (Emergency admission).
+
+- `provnum`: Institutional identifier.
+  A categorical variable recording the unique provider identification number of the specific hospital facility delivering care.
+
+## **CDISC Alignment**
+
+| SDTM Domain | Source Variable | SDTM Variable | ADaM Variable |
+|:---|:---|:---|:---|
+| **DM** (Demographics) | provnum | DM.SITEID | ADSL.SITEID |
+|  | white | DM.RACE | ADSL.RACE |
+|  | age80 | DM.AGE | ADSL.AGEGR1 |
+|  | hmo | DM.ARM | ADSL.TRT01P |
+| **HO** (Healthcare Encounters) | type | HO.HOTYPE | ADHO.HOTYPE |
+|  | los | HO.HOSTDTC / HO.HOENDTC | ADHO.AVAL |
+| **DS** (Disposition) | died | DS.DSDECOD | ADSL.DTHFL / ADSL.EOSSTT |
+
+|  |
+|:-----------------------------------------------------------------------|
+| 
+
+
+--------------------------------------------------------------------------------
+```{r, include=FALSE}
+#Vérifier le codage des variables
+
+str(medpar)
+
+#recoder en factor les variables catégorielles
+
+```
+
+## **Descriptive Analysis of Continuous Variables**
+
+```{r, message=FALSE, warning=FALSE}
+
+library(prettyR)
+
+data <- as.data.frame(medpar)
+
+data$los <- as.numeric(data$los)
+
+vars_quanti <- c("los")
+
+
+# Création de la fonction personnalisée
+extended_summary <- function(x) {
+  base_summary <- summary(x)
+  extra_stats <- c(Variance = var(x, na.rm = TRUE), `Std.Dev` = sd(x, na.rm = TRUE))
+  return(c(base_summary, extra_stats))
+}
+
+
+cat("Length of hospital stay : ")
+round(extended_summary(medpar$los), 2)
+```
+
+
+```{r}
+# Boucle sur toutes les variables quantitatives avec courbe de densité
+
+for (var in vars_quanti) {
+# 1. Tracer l'histogramme en mode "densité de probabilité" (prob = TRUE)
+hist(medpar[[var]],
+main = paste("Distribution of", var), # Titre dynamique
+xlab = var,                           # Nom de la variable sur l'axe X
+ylab = "Density",                     # L'axe Y devient la Densité
+las  = 1,  # Labels horizontaux
+col  = "white",                       # Barres blanches
+border = "black",                     # Contours noirs
+prob = TRUE)                          # OBLIGATOIRE pour la densité
+# 2. Calculer et superposer la courbe de densité
+# na.rm = TRUE est crucial car il peut y avoir des NA dans la colonne 'nodes'
+lines(density(medpar[[var]], na.rm = TRUE),
+col = "red",                         # Courbe en rouge pour le contraste
+lwd = 1)                             # Épaisseur de la ligne
+# 3. AJOUT DU CADRE AUTOUR DU GRAPHIQUE
+
+box(col = "black", lwd = 1)
+}
+
+```
+
+
+--------------------------------------------------------------------------------
+
+## **Descriptive analysis of categorical variables**
+
+```{r}
+library(gtsummary)
+library(dplyr)
+
+# Étape de nettoyage et recodage des niveaux (noms des modalités)
+medpar_clean <- medpar %>%
+  mutate(across(everything(), ~ as.numeric(as.character(.)))) %>%
+  mutate(
+    white = factor(white, levels = c(0, 1), labels = c("Other", "Caucasian")),
+    died  = factor(died,  levels = c(0, 1), labels = c("Survived", "Died")),
+    age80 = factor(age80, levels = c(0, 1), labels = c("Under 80", "80 and over")),
+    type  = factor(type,  levels = c(1, 2, 3), labels = c("Elective", "Urgent", "Emergency")),
+    hmo = factor(hmo, levels=c(0, 1), labels=c("Fee-for-Service", "HMO Member"))
+  )
+
+# Génération du tableau avec les nouveaux labels de variables
+medpar_clean %>%
+  select(hmo, white, died, age80, type) %>%
+  tbl_summary(
+    by = died,
+    label = list(
+      hmo ~ "Health Maintenance Organization",
+      white ~ "Racial Identification",
+      age80 ~ "Age Group",
+      type  ~ "Admission Pathway Type"
+    ),
+    statistic = list(
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = list(
+      all_categorical() ~ c(0, 1)
+    ),
+    missing_text = "Missing"
+  ) %>%
+  bold_labels()
+
+```
+
+
+
+
+```{r, message=FALSE, warning=FALSE}
+
+par(mfrow = c(1, 2))
+
+# ── 1. WHITE (Racial identification) ───────────────────
+barplot(
+  table(medpar$white),
+  ylab      = "Frequency",
+  xlab      = "Racial Identification",
+  names.arg = c("0=Other", "1=Caucasian"),
+  col       = "white",
+  border    = "black",
+  las       = 1,
+  cex.names = 1.0,
+  cex.lab   = 1.0
+)
+
+# ── 2. DIED (In-hospital mortality) ───────────────────
+barplot(
+  table(medpar$died),
+  ylab      = "Frequency",
+  xlab      = "In-hospital Mortality",
+  names.arg = c("0=Survived", "1=Died"),
+  col       = "white",
+  border    = "black",
+  las       = 1,
+  cex.names = 1.0,
+  cex.lab   = 1.0
+)
+
+
+# ── 3. TYPE (Type of admission) ───────────────────────
+barplot(
+  table(medpar$type),
+  ylab      = "Frequency",
+  xlab      = "Admission Type",
+  names.arg = c("1=Elective", "2=Urgent", "3=Emergency"),
+  col       = "white",
+  border    = "black",
+  las       = 1,
+  cex.names = 1.0,
+  cex.lab   = 1.0
+)
+
+# ── 4. HMO (Health Maintenance Organization) ───────────
+barplot(
+  table(medpar$hmo),
+  ylab      = "Frequency",
+  xlab      = "HMO Membership",
+  names.arg = c("0=Non-Member", "1=Member"),
+  col       = "white",
+  border    = "black",
+  las       = 1,
+  cex.names = 1.0,
+  cex.lab   = 1.0
+)
+
+# ── 5. AGE80 (Age Threshold) ───────────────────────────
+barplot(
+  table(medpar$age80),
+  ylab      = "Frequency",
+  xlab      = "Age Group",
+  names.arg = c("0=Under 80", "1=80 and Over"),
+  col       = "white",
+  border    = "black",
+  las       = 1,
+  cex.names = 1.0,
+  cex.lab   = 1.0
+)
+```
+
+---------------------------------------------------------------------
+
+## **Missing data**
+
+As shown in the diagnostic output, there are zero missing values (0% NA) across all 10 tracked variables.
+
+```{r, message=FALSE, warning=FALSE}
+tab_NA <- data.frame(  
+  Variables = names(medpar), 
+  n_NA = colSums(is.na(medpar)), 
+  percent_NA = round(colMeans(is.na(medpar)) * 100, 2),  
+  row.names = NULL 
+)  
+
+print(tab_NA)
+
+```
+
+
+---------------------------------------------------------------------
+
+## **Statistical Modeling and Diagnostics**
+
+The statistical analysis of the length of hospital stay `los` was conducted using a Negative Binomial regression framework to account for overdispersion within the count data. 
+The model yields Incident Rate Ratios, which quantify the multiplicative effect of each predictor on the expected duration of hospitalization, holding all other variables constant.
+
+
+```{r, message=FALSE, warning=FALSE}
+#Surdispersion ou non ? 
+
+round (mean(medpar$los), 2) #moyenne
+
+round (var (medpar$los), 2) #variance
+
+round (var (medpar$los) / mean(medpar$los), 2) #ratio variance/moyenne
+
+ifelse(var (medpar$los) > mean(medpar$los), "overdispersed" , "Not overdispersed" )
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+
+library(MASS) #pour la fonction glm.nb
+
+# Estimation du modèle Binomial Négatif
+mod_nb <- glm.nb(
+  los ~ died + hmo + white + age80 + factor(type), 
+  data = medpar
+)
+
+```
+
+
+--------------------------------------------------------------------------------
+
+# **Results**
+
+- The mode of admission stands out as the most powerful determinant of inpatient duration. 
+
+Compared to elective admissions (the reference group), urgent admissions increase the expected length of stay by 27.3% (IRR = 1.273). 
+
+Strikingly, emergency admissions more than double the expected hospitalization period, leading to a 107.0% increase in stay duration (IRR = 2.070). This underscores how acute, unplanned clinical presentation severely intensifies hospital resource utilization.
+
+- Membership in a Health Maintenance Organization is associated with a 6.5% reduction in hospital stay (IRR = 0.935) compared to traditional Fee-for-Service care. 
+This finding suggests that managed care structures successfully leveraged utilization management to shorten hospitalizations.
+
+- Caucasian patients exhibit an 11.5% shorter duration of stay (IRR = 0.885) than non-white patients. 
+In a historical cohort from 1991, such a difference could point toward systemic disparities in healthcare access, clinical pathways, or post-discharge support systems. 
+
+- Conversely, advanced age displays an almost negligible effect, decreasing the stay by 1.6% (IRR = 0.984).
+
+- Patients who died during their stay had a 20.8% shorter hospitalization period (IRR = 0.792). 
+From a clinical operations perspective, this negative association is mechanical: premature mortality truncates the potential length of stay during the acute phase of treatment.
+
+- The mode of admission stands out as the most powerful determinant of inpatient duration. 
+
+Compared to elective admissions (the reference group), urgent admissions increase the expected length of stay by 27.3% (IRR = 1.273). 
+
+Strikingly, emergency admissions more than double the expected hospitalization period, leading to a 107.0% increase in stay duration (IRR = 2.070). This underscores how acute, unplanned clinical presentation severely intensifies hospital resource utilization.
+
+- Membership in a Health Maintenance Organization is associated with a 6.5% reduction in hospital stay (IRR = 0.935) compared to traditional Fee-for-Service care. 
+This finding suggests that managed care structures successfully leveraged utilization management to shorten hospitalizations.
+
+- Caucasian patients exhibit an 11.5% shorter duration of stay (IRR = 0.885) than non-white patients. 
+In a historical cohort from 1991, such a difference could point toward systemic disparities in healthcare access, clinical pathways, or post-discharge support systems. 
+
+- Conversely, advanced age displays an almost negligible effect, decreasing the stay by 1.6% (IRR = 0.984).
+
+- Patients who died during their stay had a 20.8% shorter hospitalization period (IRR = 0.792). 
+From a clinical operations perspective, this negative association is mechanical: premature mortality truncates the potential length of stay during the acute phase of treatment.
+
+```{r, warning=FALSE, message=FALSE}
+
+summary (mod_nb)
+
+# Extraction et conversion des coefficients en IRR
+round(exp(coef(mod_nb)), 3)
+
+#Incident Rate Ratios 
+#IRR > 1 indique une augmentation de la durée de séjour.
+#IRR < 1 indique une diminution de la durée de séjour.
+
+
+```
+
+----------------------------------------------------------------------
+
+# **Conclusion**
+
+This study quantified the institutional, clinical, and demographic drivers of hospital length of stay for Medicare patients.
+
+The most critical finding is that hospital stay duration is overwhelmingly dictated by the admission pathway. 
+
+Unplanned emergency admissions more than double the expected length of stay (IRR = 2.070), representing the single largest operational burden on hospital capacity. 
+This highlighting how clinical acuity at presentation disrupts standard care timelines.
+
+Additionally, the findings confirm the structural efficiency of managed care, demonstrating that HMO membership significantly reduces inpatient days by 6.5% compared to traditional Fee-for-Service models. 
+
+Ultimately, this analysis underscores how advanced count data modeling can transform administrative billing records into actionable insights for capacity planning and hospital efficiency optimization.
+
+
+
