@@ -1,6 +1,11 @@
 <img src="https://github.com/user-attachments/assets/3ae59c27-2ad9-47df-a65d-3eae00525af3" alt="Abderrezzaq Kadouche - MD & Biostatistician" style="max-width: 100%; height: auto; display: block; margin: 0 auto;" />
 
-<link rel="icon" type="image/png" href="./favicon2.png?v=1">
+<link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="shortcut icon" href="/favicon.ico" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-title" content="MyWebSite" />
+<link rel="manifest" href="/site.webmanifest" />
 
 
 Welcome!
