@@ -1,7 +1,5 @@
 <img src="https://github.com/user-attachments/assets/3ae59c27-2ad9-47df-a65d-3eae00525af3" alt="Abderrezzaq Kadouche - MD & Biostatistician" style="max-width: 100%; height: auto; display: block; margin: 0 auto;" />
 
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=2">
-
 
 Welcome!
 
