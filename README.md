@@ -31,7 +31,7 @@ This portfolio showcases my work in clinical trials, RWE data analysis, and stat
 
 ## 🔬 Case Studies
 
-### 1.[Efficacy of Adjuvant Chemotherapy (5-FU + Levamisole) in Stage II/III Colon Cancer: Phase III Randomized Clinical Trial](colon-cancer-phase3-randomized-trial.html)
+### 1.[Efficacy of Adjuvant Chemotherapy (5-FU + Levamisole) in Colon Cancer: Phase III Randomized Clinical Trial](colon-cancer-phase3-randomized-trial.html)
 
 **Statistical Methods Used:** 
 * Kaplan-Meier curves.
