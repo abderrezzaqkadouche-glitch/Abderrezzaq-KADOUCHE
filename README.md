@@ -77,7 +77,7 @@ This portfolio showcases my work in clinical trials, RWE data analysis, and stat
 **Statistical Methods Used:**
 * Negative Binomial Regression.
 
-  ### 8.[Risk Factors Associated with Low Infant Birth Weight](infant-low-birth-weight.html)
+### 8.[Risk Factors Associated with Low Infant Birth Weight](infant-low-birth-weight.html)
 
 **Statistical Methods Used:**
 * Log-binomial regression.
