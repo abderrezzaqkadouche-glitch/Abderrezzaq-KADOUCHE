@@ -76,8 +76,14 @@ This portfolio showcases my work in clinical trials, RWE data analysis, and stat
 
 **Statistical Methods Used:**
 * Negative Binomial Regression.
-  
-### 8.[Lung Cancer Cohort: A Survival Analysis](lung.html)
+
+  ### 8.[Risk Factors Associated with Low Infant Birth Weight](infant-low-birth-weight.html)
+
+**Statistical Methods Used:**
+* Log-binomial regression.
+* Modified Poisson regression with robust (sandwich) variance.
+
+### 9.[Lung Cancer Cohort: A Survival Analysis](lung.html)
 
 **Statistical Methods Used:** 
 * Kaplan-Meier curves.
