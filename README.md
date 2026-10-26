@@ -1,4 +1,4 @@
-<img src="https://github.com/user-attachments/assets/3ae59c27-2ad9-47df-a65d-3eae00525af3" alt="Abderrezzaq Kadouche - MD & Biostatistician" style="max-width: 100%; height: auto; display: block; margin: 0 auto;" />
+<img src="https://github.com/user-attachments/assets/a2d07a2b-eec1-445a-a046-5b0d8d1ee3b0" alt="Abderrezzaq Kadouche - MD & Biostatistician"  style="max-width: 100%; height: auto; display: block; margin: 0 auto;" />
 
 
 Welcome!
