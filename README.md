@@ -61,7 +61,7 @@ This portfolio showcases my work in clinical trials, RWE data analysis, and stat
 
 **Statistical Methods Used:** 
 * ROC curve.
-* Kappa coefficient \(\kappa \).
+* Kappa coefficient.
   
 ### 6.[Clinical Predictors of Type 2 Diabetes](diabetes.html)
 
