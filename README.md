@@ -56,15 +56,21 @@ This portfolio showcases my work in clinical trials, RWE data analysis, and stat
 * Cumulative incidence functions (CIF).
 * Gray’s test.
 * Fine and Gray subdistribution hazard model.
+
+### 5.[Discrimination and Classification Agreement of Protein S100B and the WFNS Score in Aneurysmal Subarachnoid Hemorrhage](aneurysmal-subarachnoid-hemorrhage.html)
+
+**Statistical Methods Used:** 
+* ROC curve.
+* Kappa coefficient \(\kappa \).
   
-### 5.[Clinical Predictors of Type 2 Diabetes](diabetes.html)
+### 6.[Clinical Predictors of Type 2 Diabetes](diabetes.html)
 
 **Statistical Methods Used:**
 * Multivariable Logistic Regression.
 * Multiple Imputation for missing data.
 * Complete-case analysis.
   
-### 6.[Determinants of Plasma Retinol Concentrations: A Cross-Sectional Study](retinol.html)
+### 7.[Determinants of Plasma Retinol Concentrations: A Cross-Sectional Study](retinol.html)
 
 **Statistical Methods Used:**
 * Multiple Linear Regression.
@@ -72,21 +78,22 @@ This portfolio showcases my work in clinical trials, RWE data analysis, and stat
 * Student test.
 * ANOVA (Analysis of Variance).
 
-### 7.[Analyzing Hospital Length of Stay: A Registry-Based Study](length-of-hospital-stay.html)
+### 8.[Analyzing Hospital Length of Stay: A Registry-Based Study](length-of-hospital-stay.html)
 
 **Statistical Methods Used:**
 * Negative Binomial Regression.
 
-### 8.[Risk Factors Associated with Low Infant Birth Weight](low-infant-birth-weight.html)
+### 9.[Risk Factors Associated with Low Infant Birth Weight](low-infant-birth-weight.html)
 
 **Statistical Methods Used:**
 * Log-binomial regression.
 * Modified Poisson regression with robust (sandwich) variance.
 
-### 9.[Lung Cancer Cohort: A Survival Analysis](lung.html)
+### 10.[Lung Cancer Cohort: A Survival Analysis](lung.html)
 
 **Statistical Methods Used:** 
+* Multiple Imputation for missing data.
 * Kaplan-Meier curves.
 * Log-Rank test.
 * Cox Proportional Hazards model.
-* Multiple Imputation for missing data.
+
