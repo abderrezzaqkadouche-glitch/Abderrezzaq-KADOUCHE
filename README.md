@@ -60,7 +60,7 @@ This portfolio showcases my work in clinical trials, RWE data analysis, and stat
 ### 5.[Discrimination and Classification Agreement of Protein S100B and the WFNS Score in Aneurysmal Subarachnoid Hemorrhage](aneurysmal-subarachnoid-hemorrhage.html)
 
 **Statistical Methods Used:** 
-* ROC curve.
+* ROC curve (Receiver Operating Characteristic).
 * Kappa coefficient.
 
 ### 6.[Anxiety Ratings Across Three Raters](anxiety-ratings.html)
