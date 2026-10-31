@@ -62,15 +62,22 @@ This portfolio showcases my work in clinical trials, RWE data analysis, and stat
 **Statistical Methods Used:** 
 * ROC curve.
 * Kappa coefficient.
-  
-### 6.[Clinical Predictors of Type 2 Diabetes](diabetes.html)
+
+### 6.[Anxiety Ratings Across Three Raters](anxiety-ratings.html)
+
+**Statistical Methods Used:**
+* Intraclass Correlation Coefficient (ICC).
+* Bland–Altman Plots.
+* Spearman's Rank Correlation Coefficient.
+ 
+### 7.[Clinical Predictors of Type 2 Diabetes](diabetes.html)
 
 **Statistical Methods Used:**
 * Multivariable Logistic Regression.
 * Multiple Imputation for missing data.
 * Complete-case analysis.
   
-### 7.[Determinants of Plasma Retinol Concentrations: A Cross-Sectional Study](retinol.html)
+### 8.[Determinants of Plasma Retinol Concentrations: A Cross-Sectional Study](retinol.html)
 
 **Statistical Methods Used:**
 * Multiple Linear Regression.
@@ -78,18 +85,18 @@ This portfolio showcases my work in clinical trials, RWE data analysis, and stat
 * Student test.
 * ANOVA (Analysis of Variance).
 
-### 8.[Analyzing Hospital Length of Stay: A Registry-Based Study](length-of-hospital-stay.html)
+### 9.[Analyzing Hospital Length of Stay: A Registry-Based Study](length-of-hospital-stay.html)
 
 **Statistical Methods Used:**
 * Negative Binomial Regression.
 
-### 9.[Risk Factors Associated with Low Infant Birth Weight](low-infant-birth-weight.html)
+### 10.[Risk Factors Associated with Low Infant Birth Weight](low-infant-birth-weight.html)
 
 **Statistical Methods Used:**
 * Log-binomial regression.
 * Modified Poisson regression with robust (sandwich) variance.
 
-### 10.[Lung Cancer Cohort: A Survival Analysis](lung.html)
+### 11.[Lung Cancer Cohort: A Survival Analysis](lung.html)
 
 **Statistical Methods Used:** 
 * Multiple Imputation for missing data.
